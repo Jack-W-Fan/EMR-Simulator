@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CNU Tech</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Welcome to CNU Tech</h1>
+        <p class="subtitle">Technology • Engineering • Collaborative Healthcare</p>
+      </div>
+
+      <div class="hero-brand">
+        <!-- Replace cnu-logo.png with the official California Northstate University logo file before uploading. -->
+        <img src="images/cnu-logo.png" alt="California Northstate University logo" class="brand-logo">
+        <p>California Northstate University</p>
+      </div>
+    </section>
+
+    <section class="intro-section" aria-label="CNU Tech overview">
+      <section class="programs-section" aria-label="CNU Tech programs">
+        <h2>Explore Our Programs</h2>
+
+        <div class="program-grid">
+          <a class="program-card unlocked" href="wellness-grove.html">
+  <span class="lock-icon" aria-hidden="true">Open</span>
+  <h3>Wellness Grove</h3>
+  <p>Welcome to a digital city that will help to grow your quantitative thinking about health data</p>
+</a>
+
+          <a class="program-card locked" href="public/emr.html" id="emrCard">
+            <span class="lock-icon" aria-hidden="true">Locked</span>
+            <h3>EMR</h3>
+            <p>Try our EMR simulator developed by faculty and students of our College of Medicine</p>
+          </a>
+
+          <button class="program-card locked" type="button">
+            <span class="lock-icon" aria-hidden="true">Locked</span>
+            <h3>Anatomy Tutor</h3>
+            <p>Interactive tools for learning and teaching human anatomy.</p>
+          </button>
+        </div>
+      </section>
+
+      <div class="team-photo-wrap">
+        <!-- Replace team-photo.jpg with the final team photo file before uploading. -->
+        <img src="images/team-photo.jpg" alt="CNU Tech student team" class="team-photo">
+      </div>
+
+      <div class="intro-text">
+        <article>
+          <h2>Our Mission</h2>
+          <p>To deliver medical solutions through the collaboration of technology and healthcare.</p>
+        </article>
+
+        <article>
+          <h2>The Team</h2>
+          <p>A group of students passionate about building technology that improves lives and supports healthcare.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="auth-section" aria-label="Account access">
+      <form class="auth-card" id="loginForm">
+        <h2>Login</h2>
+
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" name="loginEmail" autocomplete="email" required>
+
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" name="loginPassword" autocomplete="current-password" required>
+
+        <div class="form-row">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember">
+            <span>Remember me</span>
+          </label>
+          <a href="#" class="text-link">Forgot password</a>
+        </div>
+
+        <button type="submit">Log In</button>
+      </form>
+
+      <form class="auth-card" id="registerForm">
+        <h2>Register</h2>
+
+        <label for="registerEmail">Email</label>
+        <input type="email" id="registerEmail" name="registerEmail" autocomplete="email" required>
+
+        <label for="registerPassword">Password</label>
+        <input type="password" id="registerPassword" name="registerPassword" autocomplete="new-password" required>
+
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+
+        <label class="checkbox-label terms">
+          <input type="checkbox" name="terms" required>
+          <span>Terms and conditions</span>
+        </label>
+
+        <button type="submit">Create Account</button>
+      </form>
+    </section>
+
+    <p class="status-message" id="statusMessage" role="status" aria-live="polite"></p>
+  </main>
+
+  <footer>
+    &copy; 2026 CNU Tech • California Northstate University
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
