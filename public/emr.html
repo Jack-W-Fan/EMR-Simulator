@@ -374,65 +374,7 @@
 </head>
 <body>
 
-<div id="loginScreen" class="screen active">
-  <div class="top-bar">
-    <div class="logo-circle"><i class="ti ti-building-hospital"></i></div>
-    <div class="top-title">
-      Electronic Medical Record
-      <small>EMR Simulator v.01 — Training System</small>
-    </div>
-  </div>
-
-  <div class="content" style="background:var(--blue-pale); display:flex; align-items:center; justify-content:center;">
-    <div class="login-card">
-      <h2>Electronic Medical Record</h2>
-      <div class="alert alert-error" id="loginError"></div>
-      <div class="alert alert-success" id="loginSuccess"></div>
-
-      <div class="auth-tabs">
-        <div class="auth-tab active" id="tabSignIn" onclick="switchAuthTab('signIn')">Sign In</div>
-        <div class="auth-tab" id="tabCreate" onclick="switchAuthTab('create')">Create Account</div>
-      </div>
-
-      <div class="auth-form active" id="formSignIn">
-        <div class="field">
-          <label>Username</label>
-          <input type="text" id="siUsername" placeholder="Enter username" autocomplete="username" />
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <input type="password" id="siPassword" placeholder="Enter password" autocomplete="current-password" />
-        </div>
-        <button class="login-btn" id="signInBtn" onclick="doSignIn()">SIGN IN</button>
-      </div>
-
-      <div class="auth-form" id="formCreate">
-        <div class="field">
-          <label>Username</label>
-          <input type="text" id="cuUsername" placeholder="Choose a username" autocomplete="off" />
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <input type="password" id="cuPassword" placeholder="Choose a password" autocomplete="new-password" />
-        </div>
-        <div class="field">
-          <label>Confirm Password</label>
-          <input type="password" id="cuConfirmPw" placeholder="Re-enter password" />
-        </div>
-        <button class="login-btn" id="createBtn" onclick="doCreateAccount()">CREATE ACCOUNT</button>
-      </div>
-
-      <div class="login-footer">EMR v.01 Simulator &nbsp;·&nbsp; For training use only</div>
-    </div>
-  </div>
-
-  <div class="bottom-bar">
-    <span>Created by Simon Page PhD &amp; Ana Raghu PhD &amp; Guy Shleby MD PhD</span>
-    <span>&copy; 2024 EMR Simulator</span>
-  </div>
-</div>
-
-<div id="scheduleScreen" class="screen">
+<div id="scheduleScreen" class="screen active">
   <div class="top-bar">
     <div class="logo-circle"><i class="ti ti-building-hospital"></i></div>
     <div class="top-title">
@@ -587,7 +529,7 @@
   <div class="modal">
     <h3><i class="ti ti-user"></i> Edit Profile</h3>
     <div class="field"><label>Display Name</label><input type="text" id="profileDisplayName" placeholder="e.g. Dr. Smith" /></div>
-    <div class="field"><label>Username</label><input type="text" id="profileUsername" placeholder="e.g. drsmith" /></div>
+    <div class="field"><label>Email</label><input type="email" id="profileEmail" placeholder="e.g. drsmith@example.com" /></div>
     <div class="field"><label>New Password (leave blank to keep current)</label><input type="password" id="profilePassword" placeholder="Enter new password" /></div>
     <div class="field"><label>Confirm Password</label><input type="password" id="profilePasswordConfirm" placeholder="Confirm new password" /></div>
     <div class="modal-footer">
@@ -658,85 +600,13 @@ async function api(method, url, body) {
 (async function init() {
   try {
     const data = await api('GET', '/api/auth/me');
-    currentUser = data.user.displayName || data.user.username;
+    currentUser = data.user.displayName || data.user.email;
     goSchedule();
   } catch {
-    // not logged in, stay on login screen
+    // not logged in, redirect to index.html
+    window.location.href = '/';
   }
 })();
-
-// ── AUTH TAB SWITCHING ──
-function switchAuthTab(tab) {
-  document.getElementById('tabSignIn').classList.toggle('active', tab === 'signIn');
-  document.getElementById('tabCreate').classList.toggle('active', tab === 'create');
-  document.getElementById('formSignIn').classList.toggle('active', tab === 'signIn');
-  document.getElementById('formCreate').classList.toggle('active', tab === 'create');
-  document.getElementById('loginError').style.display = 'none';
-  document.getElementById('loginSuccess').style.display = 'none';
-}
-
-// ── SIGN IN ──
-async function doSignIn() {
-  const u  = document.getElementById('siUsername').value.trim();
-  const p  = document.getElementById('siPassword').value.trim();
-  const err = document.getElementById('loginError');
-  const suc = document.getElementById('loginSuccess');
-  const btn = document.getElementById('signInBtn');
-  err.style.display = 'none'; suc.style.display = 'none';
-
-  if (!u || !p) { showAlert(err, 'Please enter your username and password.'); return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Signing in…';
-
-  try {
-    const data = await api('POST', '/api/auth/login', { username: u, password: p });
-    currentUser = data.user.displayName || data.user.username;
-    showAlert(suc, 'Login successful! Loading dashboard…');
-    setTimeout(goSchedule, 500);
-  } catch (e) {
-    showAlert(err, e.message);
-    btn.disabled = false;
-    btn.textContent = 'SIGN IN';
-  }
-}
-
-// ── CREATE ACCOUNT ──
-async function doCreateAccount() {
-  const u  = document.getElementById('cuUsername').value.trim();
-  const p  = document.getElementById('cuPassword').value.trim();
-  const cp = document.getElementById('cuConfirmPw').value.trim();
-  const err = document.getElementById('loginError');
-  const suc = document.getElementById('loginSuccess');
-  const btn = document.getElementById('createBtn');
-  err.style.display = 'none'; suc.style.display = 'none';
-
-  if (!u || !p) { showAlert(err, 'Please enter a username and password.'); return; }
-  if (p !== cp) { showAlert(err, 'Passwords do not match. Please try again.'); return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Creating account…';
-
-  try {
-    const data = await api('POST', '/api/auth/register', { username: u, password: p, displayName: u });
-    currentUser = data.user.displayName || data.user.username;
-    showAlert(suc, 'Account created! Loading dashboard…');
-    setTimeout(goSchedule, 500);
-  } catch (e) {
-    showAlert(err, e.message);
-    btn.disabled = false;
-    btn.textContent = 'CREATE ACCOUNT';
-  }
-}
-
-function showAlert(el, msg) { el.textContent = msg; el.style.display = 'block'; }
-
-document.addEventListener('keydown', e => {
-  if (!document.getElementById('loginScreen').classList.contains('active')) return;
-  if (e.key !== 'Enter') return;
-  if (document.getElementById('formSignIn').classList.contains('active')) doSignIn();
-  else doCreateAccount();
-});
 
 // ── NAVIGATION ──
 function showScreen(id) {
@@ -759,19 +629,7 @@ async function doLogout() {
   currentUser = '';
   patients = [];
   currentPatient = null;
-  document.getElementById('siUsername').value = '';
-  document.getElementById('siPassword').value = '';
-  document.getElementById('cuUsername').value = '';
-  document.getElementById('cuPassword').value = '';
-  document.getElementById('cuConfirmPw').value = '';
-  document.getElementById('loginError').style.display = 'none';
-  document.getElementById('loginSuccess').style.display = 'none';
-  switchAuthTab('signIn');
-  document.getElementById('signInBtn').disabled = false;
-  document.getElementById('signInBtn').textContent = 'SIGN IN';
-  document.getElementById('createBtn').disabled = false;
-  document.getElementById('createBtn').textContent = 'CREATE ACCOUNT';
-  showScreen('loginScreen');
+  window.location.href = '/';
 }
 
 function goProfile() { openProfileModal(); }
@@ -857,7 +715,7 @@ function closeModal()   { document.getElementById('addModal').classList.remove('
 function openProfileModal() {
   document.getElementById('profileModal').classList.add('open');
   document.getElementById('profileDisplayName').value = currentUser || '';
-  document.getElementById('profileUsername').value = '';
+  document.getElementById('profileEmail').value = '';
   document.getElementById('profilePassword').value = '';
   document.getElementById('profilePasswordConfirm').value = '';
 }
@@ -868,7 +726,7 @@ function closeProfileModal() {
 
 async function saveProfile() {
   const displayName = document.getElementById('profileDisplayName').value;
-  const username = document.getElementById('profileUsername').value;
+  const email = document.getElementById('profileEmail').value;
   const password = document.getElementById('profilePassword').value;
   const passwordConfirm = document.getElementById('profilePasswordConfirm').value;
 
@@ -885,7 +743,7 @@ async function saveProfile() {
   try {
     const body = {};
     if (displayName) body.displayName = displayName;
-    if (username) body.username = username;
+    if (email) body.email = email;
     if (password) body.password = password;
 
     const result = await api('PUT', '/api/auth/me', body);

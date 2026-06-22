@@ -72,7 +72,7 @@ function initSchema() {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       display_name TEXT,
       created_at TEXT DEFAULT (datetime('now'))
@@ -258,15 +258,15 @@ function seedData() {
   const count = dbGet('SELECT COUNT(*) AS cnt FROM patients');
   if (count && count.cnt > 0) return;
 
-  const demoUser = dbGet('SELECT id FROM users WHERE username = ?', ['demo']);
+  const demoUser = dbGet('SELECT id FROM users WHERE email = ?', ['demo@gmail.com']);
   let userId;
   if (demoUser) {
     userId = demoUser.id;
   } else {
     const bcrypt = require('bcryptjs');
     const hash = bcrypt.hashSync('demo123', 10);
-    dbRun('INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)', ['demo', hash, 'Dr. Demo']);
-    const newUser = dbGet('SELECT id FROM users WHERE username = ?', ['demo']);
+    dbRun('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', ['demo@gmail.com', hash, 'Dr. Demo']);
+    const newUser = dbGet('SELECT id FROM users WHERE email = ?', ['demo@gmail.com']);
     userId = newUser ? newUser.id : null;
   }
 

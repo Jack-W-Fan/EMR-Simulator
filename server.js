@@ -35,6 +35,19 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Auth middleware for EMR route
+function requireAuth(req, res, next) {
+  if (req.session.userId) {
+    next();
+  } else {
+    res.redirect('/');
+  }
+}
+
+app.get('/public/emr.html', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'emr.html'));
+});
+
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`EMR Simulator running on http://localhost:${PORT}`);

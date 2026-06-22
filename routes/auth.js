@@ -5,52 +5,52 @@ const { getDb, dbGet, dbRun } = require('../database');
 const router = express.Router();
 
 router.post('/register', (req, res) => {
-  const { username, password, displayName } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
+  const { email, password, displayName } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
   }
   if (password.length < 4) {
     return res.status(400).json({ error: 'Password must be at least 4 characters.' });
   }
 
   getDb();
-  const existing = dbGet('SELECT id FROM users WHERE username = ?', [username]);
+  const existing = dbGet('SELECT id FROM users WHERE email = ?', [email]);
   if (existing) {
-    return res.status(409).json({ error: 'Username already exists.' });
+    return res.status(409).json({ error: 'Email already exists.' });
   }
 
   const hash = bcrypt.hashSync(password, 10);
-  const result = dbRun('INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)',
-    [username, hash, displayName || username]);
+  const result = dbRun('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)',
+    [email, hash, displayName || email]);
 
   req.session.userId = result.lastInsertRowid;
-  req.session.username = username;
-  req.session.displayName = displayName || username;
+  req.session.email = email;
+  req.session.displayName = displayName || email;
 
-  res.json({ success: true, user: { username, displayName: displayName || username } });
+  res.json({ success: true, user: { email, displayName: displayName || email } });
 });
 
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
   }
 
   getDb();
-  const user = dbGet('SELECT * FROM users WHERE username = ?', [username]);
+  const user = dbGet('SELECT * FROM users WHERE email = ?', [email]);
   if (!user) {
-    return res.status(401).json({ error: 'Invalid username or password.' });
+    return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
   if (!bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid username or password.' });
+    return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
   req.session.userId = user.id;
-  req.session.username = user.username;
-  req.session.displayName = user.display_name || user.username;
+  req.session.email = user.email;
+  req.session.displayName = user.display_name || user.email;
 
-  res.json({ success: true, user: { username: user.username, displayName: user.display_name || user.username } });
+  res.json({ success: true, user: { email: user.email, displayName: user.display_name || user.email } });
 });
 
 router.post('/logout', (req, res) => {
@@ -65,7 +65,7 @@ router.get('/me', (req, res) => {
   }
   res.json({
     user: {
-      username: req.session.username,
+      email: req.session.email,
       displayName: req.session.displayName,
     }
   });
@@ -76,7 +76,7 @@ router.put('/me', (req, res) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  const { displayName, username, password } = req.body;
+  const { displayName, email, password } = req.body;
   getDb();
 
   const user = dbGet('SELECT * FROM users WHERE id = ?', [req.session.userId]);
@@ -93,14 +93,14 @@ router.put('/me', (req, res) => {
     req.session.displayName = displayName;
   }
 
-  if (username && username !== user.username) {
-    const existing = dbGet('SELECT id FROM users WHERE username = ? AND id != ?', [username, req.session.userId]);
+  if (email && email !== user.email) {
+    const existing = dbGet('SELECT id FROM users WHERE email = ? AND id != ?', [email, req.session.userId]);
     if (existing) {
-      return res.status(409).json({ error: 'Username already exists.' });
+      return res.status(409).json({ error: 'Email already exists.' });
     }
-    updates.push('username = ?');
-    params.push(username);
-    req.session.username = username;
+    updates.push('email = ?');
+    params.push(email);
+    req.session.email = email;
   }
 
   if (password && password.length >= 4) {
@@ -112,13 +112,13 @@ router.put('/me', (req, res) => {
   }
 
   if (updates.length === 0) {
-    return res.json({ success: true, user: { username: req.session.username, displayName: req.session.displayName } });
+    return res.json({ success: true, user: { email: req.session.email, displayName: req.session.displayName } });
   }
 
   params.push(req.session.userId);
   dbRun(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
 
-  res.json({ success: true, user: { username: req.session.username, displayName: req.session.displayName } });
+  res.json({ success: true, user: { email: req.session.email, displayName: req.session.displayName } });
 });
 
 module.exports = router;
