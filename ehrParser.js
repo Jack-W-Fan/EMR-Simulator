@@ -23,10 +23,16 @@ function parseEHRText(text) {
     visits: []
   };
 
-  // Extract name - look for pattern like "JULIO/MARIA RODRIGUEZ is a"
-  const nameMatch = text.match(/([A-Z][A-Z\s\/]+)\s+is\s+a\s+\d+\s+y\/o/i);
+  // Extract name
+  const nameMatch = text.match(/([A-Z][A-Z\s\/]+)\s+is\s+a\s+\d+\s+y\/o/i) || text.match(/Patient\s*Name:\s*(.*?)(?=\s*MRN:|$)/i);
   if (nameMatch) {
     patientData.name = nameMatch[1].trim();
+  }
+
+  // Extract MRN
+  const mrMatch = text.match(/MRN:\s*(\d+)/i);
+  if (mrMatch) {
+    patientData.mr = 'MR-' + mrMatch[1];
   }
 
   // Extract age
@@ -51,7 +57,7 @@ function parseEHRText(text) {
   const allergyMatch = text.match(/ALL:\s*([^\n]+)/i);
   if (allergyMatch) {
     const allergy = allergyMatch[1].trim();
-    if (allergy !== 'NKDA' && allergy !== 'None' && allergy !== 'NKA') {
+    if (allergy !== 'NKDA' && allergy !== 'None' && allergy !== 'NKA' && allergy !== 'No known drug allergies' && allergy !== 'No known drug allergies.') {
       patientData.allergy = allergy;
     }
   }
@@ -72,6 +78,18 @@ function parseEHRText(text) {
     patientData.temp = tempMatch[1];
   }
 
+  // Accept absolute dates (already formatted) as-is
+  const knownDateMatch = text.match(/(?:Date of Visit|Date):\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (knownDateMatch) {
+    patientData.visitDate = knownDateMatch[1];
+  }
+
+  // Extract DOB
+  const dobMatch = text.match(/DOB:\s*(.*?)(?=\s*(?:Date of Visit|Date):|$)/i);
+  if (dobMatch) {
+    patientData.dob = dobMatch[1].trim();
+  }
+
   // Parse visits
   patientData.visits = parseVisits(text);
 
@@ -89,10 +107,12 @@ function parseEHRText(text) {
   const displayHours = hours > 12 ? hours - 12 : hours;
   patientData.appt = `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 
-  // Generate DOB from age
-  const currentYear = now.getFullYear();
-  const birthYear = currentYear - patientData.age;
-  patientData.dob = `01/01/${birthYear}`;
+  // Generate DOB from age (only if not already set from DOB: field)
+  if (!patientData.dob) {
+    const currentYear = now.getFullYear();
+    const birthYear = currentYear - patientData.age;
+    patientData.dob = `01/01/${birthYear}`;
+  }
 
   return patientData;
 }
@@ -131,16 +151,22 @@ function parseVisits(text) {
   const visitPattern = /(TODAY['’]S\s+(?:NURSING|TRIAGE|NURSING\/TRIAGE)\s*NOTE|PMD\s+VISIT|ER\s+VISIT|SURGERY\s+CLINIC|OFFICE\s+VISIT)\s*(?:\s*\()?(\d+\s+(?:month|year|day|week)s?\s+ago|today|yesterday)?/gi;
   const matches = [...text.matchAll(visitPattern)];
 
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i];
-    const startIndex = match.index;
-    const endIndex = i < matches.length - 1 ? matches[i + 1].index : text.length;
-    const section = text.substring(startIndex, endIndex);
+  if (matches.length > 0) {
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const startIndex = match.index;
+      const endIndex = i < matches.length - 1 ? matches[i + 1].index : text.length;
+      const section = text.substring(startIndex, endIndex);
 
-    const visit = parseVisitSection(section);
-    if (visit && (visit.chief_complaint || visit.history_present_illness || visit.nursing_notes || visit.assessment)) {
-      visits.push(visit);
+      const visit = parseVisitSection(section);
+      if (visit && (visit.chief_complaint || visit.history_present_illness || visit.nursing_notes || visit.assessment)) {
+        visits.push(visit);
+      }
     }
+  } else {
+    // No visit-section headers found — treat whole text as a single visit
+    const visit = parseSimpleFormat(text);
+    if (visit) visits.push(visit);
   }
 
   return visits;
@@ -152,6 +178,13 @@ function parseVisitSection(section) {
     date: '',
     chief_complaint: '',
     history_present_illness: '',
+    past_medical_history: '',
+    surgical_history: '',
+    hospitalizations: '',
+    health_maintenance: '',
+    family_history: '',
+    social_history: '',
+    review_of_systems: '',
     allergies: '',
     physical_exam: '',
     medical_decision_making: '',
@@ -316,6 +349,116 @@ function parseVisitSection(section) {
   if (imagingMatch) {
     const imagingText = imagingMatch[1].trim();
     visit.imaging.push(imagingText);
+  }
+
+  return visit;
+}
+
+function parseSimpleFormat(text) {
+  const visit = {
+    type: 'Emergency Room',
+    date: '',
+    chief_complaint: '',
+    history_present_illness: '',
+    past_medical_history: '',
+    surgical_history: '',
+    hospitalizations: '',
+    health_maintenance: '',
+    family_history: '',
+    social_history: '',
+    review_of_systems: '',
+    allergies: '',
+    physical_exam: '',
+    medical_decision_making: '',
+    assessment: '',
+    plan: '',
+    nursing_notes: '',
+    medications: [],
+    labs: [],
+    imaging: []
+  };
+
+  const nextSection = '(?:Past Medical History|Past Surgical History|Hospitalizations|Health Maintenance|Immunizations|Family History|Social History|Review of Systems|Medications|Allergies|Vital Signs|Physical Examination|Assessment|Plan|Disposition|Discharge|$)';
+
+  // Date of Visit
+  const dvMatch = text.match(/(?:Date of Visit|Date):\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+  if (dvMatch) visit.date = dvMatch[1];
+
+  // Chief Complaint
+  const ccMatch = text.match(/Chief\s+Complaint\s*\n\s*([\s\S]*?)(?=\n\s*(?:History of Present|Past Medical|Past Surgical|Hospitalizations|Health Maintenance|Family History|Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (ccMatch) visit.chief_complaint = ccMatch[1].trim();
+
+  // History of Present Illness
+  const hpiMatch = text.match(/History\s+of\s+Present\s+Illness\s*\n\s*([\s\S]*?)(?=\n\s*(?:Past Medical|Past Surgical|Hospitalizations|Health Maintenance|Family History|Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (hpiMatch) visit.history_present_illness = hpiMatch[1].trim();
+
+  // Past Medical History
+  const pmhMatch = text.match(/Past\s+Medical\s+History\s*\n\s*([\s\S]*?)(?=\n\s*(?:Past Surgical|Hospitalizations|Health Maintenance|Family History|Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (pmhMatch) visit.past_medical_history = pmhMatch[1].trim();
+
+  // Past Surgical History
+  const surgMatch = text.match(/Past\s+Surgical\s+History\s*\n\s*([\s\S]*?)(?=\n\s*(?:Hospitalizations|Health Maintenance|Family History|Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (surgMatch) visit.surgical_history = surgMatch[1].trim();
+
+  // Hospitalizations
+  const hospMatch = text.match(/Hospitalizations\s*\n\s*([\s\S]*?)(?=\n\s*(?:Health Maintenance|Family History|Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (hospMatch) visit.hospitalizations = hospMatch[1].trim();
+
+  // Health Maintenance / Immunizations
+  const healthMatch = text.match(/(?:Health\s+Maintenance|Immunizations)\s*\n\s*([\s\S]*?)(?=\n\s*(?:Family History|Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (healthMatch) visit.health_maintenance = healthMatch[1].trim();
+
+  // Family History
+  const famMatch = text.match(/Family\s+History\s*\n\s*([\s\S]*?)(?=\n\s*(?:Social History|Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (famMatch) visit.family_history = famMatch[1].trim();
+
+  // Social History
+  const socMatch = text.match(/Social\s+History\s*\n\s*([\s\S]*?)(?=\n\s*(?:Review of Systems|Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (socMatch) visit.social_history = socMatch[1].trim();
+
+  // Review of Systems
+  const rosMatch = text.match(/Review\s+of\s+Systems\s*\n\s*([\s\S]*?)(?=\n\s*(?:Medications|Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (rosMatch) visit.review_of_systems = rosMatch[1].trim();
+
+  // Allergies
+  const allMatch = text.match(/Allergies\s*\n\s*([\s\S]*?)(?=\n\s*(?:Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (allMatch) {
+    const allergy = allMatch[1].trim();
+    if (allergy !== 'NKDA' && allergy !== 'None' && allergy !== 'NKA' && allergy !== 'No known drug allergies' && allergy !== 'No known drug allergies.') {
+      visit.allergies = allergy;
+    }
+  }
+
+  // Physical Examination
+  const peMatch = text.match(/Physical\s*Examination\s*\n\s*([\s\S]*?)(?=\n\s*(?:Assessment|Plan|Disposition|Discharge|$))/i);
+  if (peMatch) visit.physical_exam = peMatch[1].trim();
+
+  // Medical Decision Making
+  const mdmMatch = text.match(/Medical\s+Decision\s+Making\s*\n\s*([\s\S]*?)(?=\n\s*(?:Assessment|Plan|Disposition|Discharge|$))/i);
+  if (mdmMatch) visit.medical_decision_making = mdmMatch[1].trim();
+
+  // Assessment
+  const assessMatch = text.match(/Assessment\s*\n\s*([\s\S]*?)(?=\n\s*(?:Plan|Disposition|Discharge|$))/i);
+  if (assessMatch) visit.assessment = assessMatch[1].trim();
+
+  // Plan
+  const planMatch = text.match(/Plan\s*\n\s*([\s\S]*?)(?=\n\s*(?:Disposition|Discharge|$))/i);
+  if (planMatch) visit.plan = planMatch[1].trim();
+
+  // Medications
+  const medsBlock = text.match(/Medications\s*\n\s*([\s\S]*?)(?=\n\s*(?:Allergies|Vital|Physical|Assessment|Plan|Disposition|Discharge|$))/i);
+  if (medsBlock) {
+    const medsText = medsBlock[1].trim();
+    const medEntries = medsText.split(/;\s*/).filter(m => m.trim());
+    visit.medications = medEntries.map(med => {
+      const medObj = { name: med.trim(), dose: '', route: '' };
+      const doseMatch = med.match(/(\d+\s*(?:mg|g|mcg|ml))/i);
+      if (doseMatch) {
+        medObj.dose = doseMatch[1];
+        medObj.name = med.replace(doseMatch[0], '').replace(/[,;].*$/, '').replace(/\.$/, '').replace(/\s+/g, ' ').trim();
+      }
+      return medObj;
+    });
   }
 
   return visit;

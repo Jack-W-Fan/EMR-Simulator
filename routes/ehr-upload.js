@@ -53,12 +53,19 @@ router.post('/upload', async (req, res) => {
     if (patientData.visits && patientData.visits.length > 0) {
       for (const visit of patientData.visits) {
         dbRun(
-          `INSERT INTO physician_notes (patient_mr, chief_complaint, history_present_illness, physical_exam, assessment, plan, visit_type, visit_date, nursing_notes, medical_decision_making, allergies, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO physician_notes (patient_mr, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, plan, visit_type, visit_date, nursing_notes, medical_decision_making, allergies, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             patientData.mr,
             visit.chief_complaint,
             visit.history_present_illness,
+            visit.past_medical_history || '',
+            visit.surgical_history || '',
+            visit.hospitalizations || '',
+            visit.health_maintenance || '',
+            visit.family_history || '',
+            visit.social_history || '',
+            visit.review_of_systems || '',
             visit.physical_exam,
             visit.assessment,
             visit.plan,
