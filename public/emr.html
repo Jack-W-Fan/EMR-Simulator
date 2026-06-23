@@ -404,6 +404,7 @@
       <div style="display:flex;gap:8px;">
         <button class="btn btn-outline" onclick="refreshTable()"><i class="ti ti-refresh"></i> Refresh</button>
         <button class="btn btn-green" onclick="openAddModal()"><i class="ti ti-plus"></i> New Patient</button>
+        <button class="btn btn-blue" onclick="openEhrUploadModal()"><i class="ti ti-file-upload"></i> Upload EHR</button>
       </div>
     </div>
 
@@ -463,6 +464,7 @@
     <button class="btn-tab" onclick="goSchedule()"><i class="ti ti-arrow-left"></i> Back</button>
     <button class="btn-tab" onclick="generateReport()"><i class="ti ti-file-download"></i> Generate Report</button>
     <button class="btn-tab active-tab" id="noteTabBtn" onclick="setSection('note')"><i class="ti ti-file-text"></i> Note</button>
+    <button class="btn-tab" onclick="confirmDeletePatient()" style="color:var(--red);"><i class="ti ti-trash"></i> Delete Patient</button>
     <span style="margin-left:auto; color:rgba(255,255,255,0.85); font-size:11px;" id="patientBadge"></span>
   </div>
 
@@ -521,6 +523,22 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn btn-green" onclick="addPatient()">Add Patient</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ehrUploadModal">
+  <div class="modal">
+    <h3><i class="ti ti-file-upload"></i> Upload EHR Chart</h3>
+    <p style="font-size:11px;color:#666;margin-bottom:12px;">Upload a PDF or DOCX file to automatically create a patient case.</p>
+    <div class="field">
+      <label>Select File (PDF or DOCX)</label>
+      <input type="file" id="ehrFile" accept=".pdf,.docx" style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:12px;" />
+    </div>
+    <div id="ehrUploadStatus" style="font-size:11px;color:#666;margin-top:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeEhrUploadModal()">Cancel</button>
+      <button class="btn btn-green" onclick="uploadEHR()">Upload & Create Patient</button>
     </div>
   </div>
 </div>
@@ -711,6 +729,56 @@ function showTab(el, section) {
 function openAddModal() { document.getElementById('addModal').classList.add('open'); }
 function closeModal()   { document.getElementById('addModal').classList.remove('open'); }
 
+// ── EHR UPLOAD MODAL ──
+function openEhrUploadModal() { document.getElementById('ehrUploadModal').classList.add('open'); }
+function closeEhrUploadModal() {
+  document.getElementById('ehrUploadModal').classList.remove('open');
+  document.getElementById('ehrFile').value = '';
+  document.getElementById('ehrUploadStatus').textContent = '';
+}
+
+async function uploadEHR() {
+  const fileInput = document.getElementById('ehrFile');
+  const statusDiv = document.getElementById('ehrUploadStatus');
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    statusDiv.textContent = 'Please select a file.';
+    statusDiv.style.color = 'red';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const formData = new FormData();
+  formData.append('file', file);
+
+  statusDiv.textContent = 'Uploading and processing...';
+  statusDiv.style.color = '#666';
+
+  try {
+    const response = await fetch('/api/ehr/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      statusDiv.textContent = 'Patient created successfully!';
+      statusDiv.style.color = 'green';
+      setTimeout(() => {
+        closeEhrUploadModal();
+        loadPatients();
+      }, 1500);
+    } else {
+      statusDiv.textContent = 'Error: ' + (data.error || 'Upload failed');
+      statusDiv.style.color = 'red';
+    }
+  } catch (error) {
+    statusDiv.textContent = 'Error: ' + error.message;
+    statusDiv.style.color = 'red';
+  }
+}
+
 // ── PROFILE MODAL ──
 function openProfileModal() {
   document.getElementById('profileModal').classList.add('open');
@@ -774,6 +842,20 @@ async function addPatient() {
     document.getElementById('newCc').value=''; document.getElementById('newAppt').value='';
   } catch (e) {
     alert('Error adding patient: ' + e.message);
+  }
+}
+
+async function confirmDeletePatient() {
+  if (!currentPatient) return;
+  const patientName = currentPatient.name || 'this patient';
+  if (confirm(`Are you sure you want to delete ${patientName}? This action cannot be undone.`)) {
+    try {
+      await api('DELETE', '/api/patients/' + currentPatient.mr);
+      alert('Patient deleted successfully.');
+      goSchedule();
+    } catch (e) {
+      alert('Error deleting patient: ' + e.message);
+    }
   }
 }
 
@@ -969,27 +1051,42 @@ function renderSection(sec) {
   }
 
   else if (sec === 'labs') {
+    const labOrders = currentOrders.filter(o => o.type === 'labs' || o.type === 'Lab');
+    const refRanges = { 'Hgb':'13.5-17.5 g/dL','hematocrit':'38.3-48.6%','platelets':'150-450 K/uL','WBC':'4.5-11.0 K/uL','Na':'136-145 mEq/L','K':'3.5-5.1 mEq/L','Cl':'98-107 mEq/L','Co2':'23-29 mEq/L','Glu':'70-100 mg/dL','BUN':'7-20 mg/dL','Cr':'0.6-1.2 mg/dL','AST':'10-40 U/L','ALT':'7-56 U/L','Alk Phos':'44-147 U/L','lipase':'0-160 U/L','CBC':'(see components)','Chem 7':'(see components)','LFTs':'(see components)' };
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-test-pipe"></i> Lab Results</div>
         <div class="info-card-body">
+          ${labOrders.length ? `<div style="margin-bottom:16px;">
+            ${labOrders.map(o => {
+              const ref = refRanges[o.name] || '—';
+              return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px;margin-bottom:8px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:4px;">
+                <div class="field"><label>Test Name</label><div style="font-size:12px;padding:6px 0;">${o.name}</div></div>
+                <div class="field"><label>Status</label><div style="font-size:12px;padding:6px 0;">${o.status || 'Normal'}</div></div>
+                <div class="field"><label>Result Value</label><div style="font-size:12px;padding:6px 0;">—</div></div>
+                <div class="field"><label>Reference Range</label><div style="font-size:12px;padding:6px 0;">${ref}</div></div>
+                <div class="field"><label>Ordered By</label><div style="font-size:12px;padding:6px 0;">${o.ordered_by || '—'}</div></div>
+                <div class="field"><label>Date Ordered</label><div style="font-size:12px;padding:6px 0;">${o.order_date || '—'}</div></div>
+              </div>`;
+            }).join('')}
+          </div>` : '<div class="empty-state"><i class="ti ti-test-pipe"></i>No lab results on file</div>'}
           <div class="lab-form">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="field"><label>Test Name</label><input type="text" placeholder="e.g. CBC, BMP, Lipid Panel" /></div>
-              <div class="field"><label>Date Ordered</label><input type="date" /></div>
-              <div class="field"><label>Result Value</label><input type="text" placeholder="e.g. 5.2 mmol/L" /></div>
-              <div class="field"><label>Reference Range</label><input type="text" placeholder="e.g. 3.9&ndash;5.5 mmol/L" /></div>
+              <div class="field"><label>Test Name</label><input type="text" id="labTestName" placeholder="e.g. CBC, BMP, Lipid Panel" /></div>
+              <div class="field"><label>Date Ordered</label><input type="date" id="labOrderDate" /></div>
+              <div class="field"><label>Result Value</label><input type="text" id="labResult" placeholder="e.g. 5.2 mmol/L" /></div>
+              <div class="field"><label>Reference Range</label><input type="text" id="labRefRange" placeholder="e.g. 3.9&ndash;5.5 mmol/L" /></div>
               <div class="field"><label>Status</label>
-                <select style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:12px;">
+                <select id="labStatus" style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:12px;">
                   <option>Normal</option><option>Abnormal Low</option><option>Abnormal High</option><option>Critical</option>
                 </select>
               </div>
-              <div class="field"><label>Ordered By</label><input type="text" value="${p.sched}" /></div>
+              <div class="field"><label>Ordered By</label><input type="text" id="labOrderedBy" value="${p.sched}" /></div>
             </div>
-            <div class="field"><label>Notes</label><textarea placeholder="Additional notes about lab results&hellip;"></textarea></div>
+            <div class="field"><label>Notes</label><textarea id="labNotes" placeholder="Additional notes about lab results&hellip;"></textarea></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
-              <button class="btn btn-outline">Clear</button>
-              <button class="btn btn-green" onclick="alert('Lab result saved!')"><i class="ti ti-device-floppy"></i> Save</button>
+              <button class="btn btn-outline" onclick="clearLabForm()">Clear</button>
+              <button class="btn btn-green" onclick="saveLabResult()"><i class="ti ti-device-floppy"></i> Save</button>
             </div>
           </div>
         </div>
@@ -1276,7 +1373,7 @@ function renderSection(sec) {
               <button class="btn btn-green" onclick="savePhysicianNote()"><i class="ti ti-device-floppy"></i> Save Note</button>
             </div>
           </div>
-          ${currentPhysicianNotes.length ? `
+              ${currentPhysicianNotes.length ? `
           <div style="margin-bottom:16px;">
             <div style="font-weight:600;font-size:12px;color:var(--text-muted);margin-bottom:8px;">Previous Notes:</div>
             ${currentPhysicianNotes.map(n => `
@@ -1284,7 +1381,7 @@ function renderSection(sec) {
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                   <div>
                     <div style="font-weight:600;font-size:13px;">${n.chief_complaint || 'No Chief Complaint'}</div>
-                    <div style="font-size:11px;color:var(--text-muted);">${n.created_at} · Signed by: ${n.created_by||'—'}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${n.visit_date || n.created_at}${n.visit_type ? ' · ' + n.visit_type : ''} · Signed by: ${n.created_by||'—'}</div>
                   </div>
                   <div style="display:flex;gap:4px;">
                     <button class="btn btn-outline" style="font-size:10px;padding:4px 8px;" onclick="toggleNoteDetails(${n.id})">Open</button>
@@ -1523,7 +1620,8 @@ async function generateReport() {
       
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-      doc.text(`Date: ${latestNote.created_at}`, 20, y); y += lineHeight;
+      doc.text(`Date: ${latestNote.visit_date || latestNote.created_at}`, 20, y); y += lineHeight;
+      doc.text(`Visit Type: ${latestNote.visit_type || '—'}`, 20, y); y += lineHeight;
       doc.text(`Signed by: ${latestNote.created_by || '—'}`, 20, y); y += lineHeight;
       y += 5;
       
@@ -1643,6 +1741,9 @@ async function generateReport() {
       
       // Plan
       addText(latestNote.plan, 'Plan:', true);
+
+      // Nursing Notes
+      addText(latestNote.nursing_notes, 'Nursing Notes:', true);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
@@ -2244,6 +2345,37 @@ async function deleteAllergy(id) {
     updatePatientInfo();
   } catch (e) {
     alert('Error removing allergy: ' + e.message);
+  }
+}
+
+function clearLabForm() {
+  document.getElementById('labTestName').value = '';
+  document.getElementById('labOrderDate').value = '';
+  document.getElementById('labResult').value = '';
+  document.getElementById('labRefRange').value = '';
+  document.getElementById('labStatus').value = 'Normal';
+  document.getElementById('labOrderedBy').value = currentPatient?.sched || '';
+  document.getElementById('labNotes').value = '';
+}
+
+async function saveLabResult() {
+  if (!currentPatient) return;
+  const name = document.getElementById('labTestName')?.value?.trim();
+  if (!name) { alert('Enter a test name.'); return; }
+  try {
+    await api('POST', `/api/patients/${currentPatient.mr}/orders`, {
+      type: 'labs',
+      name,
+      priority: 'Routine',
+      order_date: document.getElementById('labOrderDate')?.value || null,
+      status: document.getElementById('labStatus')?.value || 'Pending',
+      notes: document.getElementById('labNotes')?.value || ''
+    });
+    await loadPatientData(currentPatient.mr);
+    renderSection('labs');
+    clearLabForm();
+  } catch (e) {
+    alert('Error saving lab: ' + e.message);
   }
 }
 </script>

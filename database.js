@@ -198,12 +198,34 @@ function initSchema() {
       physical_exam TEXT,
       assessment TEXT,
       plan TEXT,
+      visit_type TEXT,
+      visit_date TEXT,
+      nursing_notes TEXT,
+      medical_decision_making TEXT,
+      allergies TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       created_by TEXT,
       FOREIGN KEY (patient_mr) REFERENCES patients(mr)
     )
   `);
-  
+
+  // Add new columns to physician_notes table if they don't exist
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN visit_type TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN visit_date TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN nursing_notes TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN medical_decision_making TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN allergies TEXT');
+  } catch (e) {}
+
   // Add review_of_systems column if it doesn't exist
   try {
     const columns = dbAll(`PRAGMA table_info(physician_notes)`);
