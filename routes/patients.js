@@ -1,35 +1,40 @@
 const express = require('express');
 const { getDb, dbGet, dbAll, dbRun } = require('../database');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
 function getPatientForUser(mr, userId) {
   getDb();
-  return dbGet('SELECT * FROM patients WHERE mr = ? AND user_id = ?', [mr, userId]);
+  return dbGet('SELECT * FROM patients WHERE mr = ? AND (user_id = ? OR is_shared = 1)', [mr, userId]);
 }
 
-function getPatientClinicalData(mr) {
+function getPatientClinicalData(mr, userId) {
   return {
-    medications: dbAll('SELECT * FROM medications WHERE patient_mr = ? ORDER BY id', [mr]),
-    orders: dbAll('SELECT * FROM orders WHERE patient_mr = ? ORDER BY id DESC', [mr]),
-    problems: dbAll('SELECT * FROM problems WHERE patient_mr = ? ORDER BY id', [mr]),
-    consultations: dbAll('SELECT * FROM consultations WHERE patient_mr = ? ORDER BY id DESC', [mr]),
-    studies: dbAll('SELECT * FROM studies WHERE patient_mr = ? ORDER BY id DESC', [mr]),
-    physicianNotes: dbAll('SELECT * FROM physician_notes WHERE patient_mr = ? ORDER BY id DESC', [mr]),
-    nursingNotes: dbAll('SELECT * FROM nursing_notes WHERE patient_mr = ? ORDER BY id DESC', [mr]),
-    imaging: dbAll('SELECT * FROM imaging WHERE patient_mr = ? ORDER BY id DESC', [mr]),
-    allergies: dbAll('SELECT * FROM allergies WHERE patient_mr = ? ORDER BY id', [mr]),
+    medications: dbAll('SELECT * FROM medications WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id', [mr, userId]),
+    orders: dbAll('SELECT * FROM orders WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    problems: dbAll('SELECT * FROM problems WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id', [mr, userId]),
+    consultations: dbAll('SELECT * FROM consultations WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    studies: dbAll('SELECT * FROM studies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    physicianNotes: dbAll('SELECT * FROM physician_notes WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    nursingNotes: dbAll('SELECT * FROM nursing_notes WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    imaging: dbAll('SELECT * FROM imaging WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    allergies: dbAll('SELECT * FROM allergies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id', [mr, userId]),
   };
 }
 
 router.get('/', requireAuth, (req, res) => {
   getDb();
-  const patients = dbAll('SELECT * FROM patients WHERE user_id = ? ORDER BY id', [req.session.userId]);
+  // Get user's own patients plus shared patients from admins
+  const patients = dbAll(`
+    SELECT * FROM patients
+    WHERE user_id = ? OR is_shared = 1
+    ORDER BY id
+  `, [req.session.userId]);
   res.json(patients);
 });
 
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAdmin, (req, res) => {
   const { name, dob, sex, cc, appt } = req.body;
   if (!name || !dob || !cc) {
     return res.status(400).json({ error: 'Name, DOB, and Chief Complaint are required.' });
@@ -40,10 +45,14 @@ router.post('/', requireAuth, (req, res) => {
   getDb();
   const displayName = req.session.displayName || req.session.username;
 
+  // Check if user is admin to mark patient as shared
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  const isShared = user && user.role === 'admin' ? 1 : 0;
+
   dbRun(
-    `INSERT INTO patients (user_id, name, dob, sex, mr, cc, appt, sched, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting')`,
-    [req.session.userId, name, dob, sex, mr, cc, apptFmt, displayName]
+    `INSERT INTO patients (user_id, name, dob, sex, mr, cc, appt, sched, status, is_shared)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?)`,
+    [req.session.userId, name, dob, sex, mr, cc, apptFmt, displayName, isShared]
   );
 
   const patient = dbGet('SELECT * FROM patients WHERE mr = ?', [mr]);
@@ -60,8 +69,8 @@ router.post('/:mr/medications', requireAuth, (req, res) => {
   }
 
   const result = dbRun(
-    'INSERT INTO medications (patient_mr, name, dose, freq, route, start, prescriber, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, name, dose || '', freq || '', route || '', start || '', prescriber || '', type || 'existing']
+    'INSERT INTO medications (patient_mr, user_id, name, dose, freq, route, start, prescriber, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, name, dose || '', freq || '', route || '', start || '', prescriber || '', type || 'existing']
   );
 
   const medication = dbGet('SELECT * FROM medications WHERE id = ?', [result.lastInsertRowid]);
@@ -88,8 +97,8 @@ router.post('/:mr/orders', requireAuth, (req, res) => {
 
   const orderedBy = req.session.displayName || req.session.username;
   const result = dbRun(
-    'INSERT INTO orders (patient_mr, type, name, priority, order_date, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, type, name, priority || 'Routine', order_date || null, status || 'Pending', orderedBy, notes || '']
+    'INSERT INTO orders (patient_mr, user_id, type, name, priority, order_date, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, type, name, priority || 'Routine', order_date || null, status || 'Pending', orderedBy, notes || '']
   );
 
   const order = dbGet('SELECT * FROM orders WHERE id = ?', [result.lastInsertRowid]);
@@ -112,12 +121,12 @@ router.post('/:mr/problems', requireAuth, (req, res) => {
   const { name, category, status } = req.body;
   if (!name) return res.status(400).json({ error: 'Problem name is required.' });
 
-  const existing = dbGet('SELECT id FROM problems WHERE patient_mr = ? AND name = ?', [req.params.mr, name]);
+  const existing = dbGet('SELECT id FROM problems WHERE patient_mr = ? AND name = ? AND user_id = ?', [req.params.mr, name, req.session.userId]);
   if (existing) return res.status(409).json({ error: 'Problem already on list.' });
 
   const result = dbRun(
-    'INSERT INTO problems (patient_mr, name, category, status) VALUES (?, ?, ?, ?)',
-    [req.params.mr, name, category || 'Other', status || 'active']
+    'INSERT INTO problems (patient_mr, user_id, name, category, status) VALUES (?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, name, category || 'Other', status || 'active']
   );
 
   const problem = dbGet('SELECT * FROM problems WHERE id = ?', [result.lastInsertRowid]);
@@ -150,8 +159,8 @@ router.post('/:mr/consultations', requireAuth, (req, res) => {
 
   const requestedBy = req.session.displayName || req.session.username;
   const result = dbRun(
-    'INSERT INTO consultations (patient_mr, specialty, requested_date, status, consultant, summary, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, specialty, requested_date || null, status || 'Pending', consultant || '', summary || '', requestedBy]
+    'INSERT INTO consultations (patient_mr, user_id, specialty, requested_date, status, consultant, summary, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, specialty, requested_date || null, status || 'Pending', consultant || '', summary || '', requestedBy]
   );
 
   const consultation = dbGet('SELECT * FROM consultations WHERE id = ?', [result.lastInsertRowid]);
@@ -176,8 +185,8 @@ router.post('/:mr/studies', requireAuth, (req, res) => {
 
   const orderedBy = req.session.displayName || req.session.username;
   const studyResult = dbRun(
-    'INSERT INTO studies (patient_mr, name, study_date, result, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, name, study_date || null, result || '', status || 'Pending', orderedBy, notes || '']
+    'INSERT INTO studies (patient_mr, user_id, name, study_date, result, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, name, study_date || null, result || '', status || 'Pending', orderedBy, notes || '']
   );
 
   const study = dbGet('SELECT * FROM studies WHERE id = ?', [studyResult.lastInsertRowid]);
@@ -197,7 +206,7 @@ router.get('/:mr', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
-  const clinical = getPatientClinicalData(req.params.mr);
+  const clinical = getPatientClinicalData(req.params.mr, req.session.userId);
   res.json({ ...patient, ...clinical });
 });
 
@@ -233,7 +242,7 @@ router.put('/:mr', requireAuth, (req, res) => {
   res.json(updated);
 });
 
-router.delete('/:mr', requireAuth, (req, res) => {
+router.delete('/:mr', requireAdmin, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
@@ -272,8 +281,8 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
   const createdBy = req.session.displayName || req.session.username;
 
   const result = dbRun(
-    'INSERT INTO physician_notes (patient_mr, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, plan, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', plan || '', createdBy]
+    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, plan, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', plan || '', createdBy]
   );
 
   const note = dbGet('SELECT * FROM physician_notes WHERE id = ?', [result.lastInsertRowid]);
@@ -287,8 +296,8 @@ router.post('/:mr/nursing-notes', requireAuth, (req, res) => {
   const { nurse_name, time, blood_pressure, heart_rate, temperature, weight, note } = req.body;
 
   const result = dbRun(
-    'INSERT INTO nursing_notes (patient_mr, nurse_name, time, blood_pressure, heart_rate, temperature, weight, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, nurse_name || '', time || '', blood_pressure || '', heart_rate || '', temperature || '', weight || '', note || '']
+    'INSERT INTO nursing_notes (patient_mr, user_id, nurse_name, time, blood_pressure, heart_rate, temperature, weight, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, nurse_name || '', time || '', blood_pressure || '', heart_rate || '', temperature || '', weight || '', note || '']
   );
 
   const nursingNote = dbGet('SELECT * FROM nursing_notes WHERE id = ?', [result.lastInsertRowid]);
@@ -323,8 +332,8 @@ router.post('/:mr/imaging', requireAuth, (req, res) => {
   }
 
   const result = dbRun(
-    'INSERT INTO imaging (patient_mr, label, image_data, annotations) VALUES (?, ?, ?, ?)',
-    [req.params.mr, label, image_data || '', annotations || '']
+    'INSERT INTO imaging (patient_mr, user_id, label, image_data, annotations) VALUES (?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, label, image_data || '', annotations || '']
   );
 
   const imaging = dbGet('SELECT * FROM imaging WHERE id = ?', [result.lastInsertRowid]);
@@ -350,8 +359,8 @@ router.post('/:mr/allergies', requireAuth, (req, res) => {
   }
 
   const result = dbRun(
-    'INSERT INTO allergies (patient_mr, allergen, type, reaction, first_encounter) VALUES (?, ?, ?, ?, ?)',
-    [req.params.mr, allergen, type, reaction || '', first_encounter || '']
+    'INSERT INTO allergies (patient_mr, user_id, allergen, type, reaction, first_encounter) VALUES (?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, allergen, type, reaction || '', first_encounter || '']
   );
 
   const allergy = dbGet('SELECT * FROM allergies WHERE id = ?', [result.lastInsertRowid]);

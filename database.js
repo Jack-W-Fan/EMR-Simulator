@@ -75,6 +75,7 @@ function initSchema() {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       display_name TEXT,
+      role TEXT DEFAULT 'user',
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
@@ -98,6 +99,7 @@ function initSchema() {
       hr TEXT DEFAULT '—',
       temp TEXT DEFAULT '—',
       wt TEXT DEFAULT '—',
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id)
@@ -107,6 +109,7 @@ function initSchema() {
     CREATE TABLE IF NOT EXISTS medications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       dose TEXT,
       freq TEXT,
@@ -114,7 +117,9 @@ function initSchema() {
       start TEXT,
       prescriber TEXT,
       type TEXT DEFAULT 'existing',
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      is_shared INTEGER DEFAULT 0,
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
@@ -124,10 +129,14 @@ function initSchema() {
   } catch (e) {
     // Column already exists, ignore error
   }
+  try {
+    db.run('ALTER TABLE medications ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
   db.run(`
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       type TEXT NOT NULL,
       name TEXT NOT NULL,
       priority TEXT DEFAULT 'Routine',
@@ -135,8 +144,10 @@ function initSchema() {
       status TEXT DEFAULT 'Pending',
       ordered_by TEXT,
       notes TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
   // Drop and recreate problems table with annotation field
@@ -145,40 +156,49 @@ function initSchema() {
     CREATE TABLE problems (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       category TEXT,
       status TEXT DEFAULT 'active',
       annotation TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
   db.run(`
     CREATE TABLE IF NOT EXISTS consultations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       specialty TEXT NOT NULL,
       requested_date TEXT,
       status TEXT DEFAULT 'Pending',
       consultant TEXT,
       summary TEXT,
       requested_by TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
   db.run(`
     CREATE TABLE IF NOT EXISTS studies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       study_date TEXT,
       result TEXT,
       status TEXT DEFAULT 'Final',
       ordered_by TEXT,
       notes TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
   // Create physician_notes table if it doesn't exist
@@ -186,6 +206,7 @@ function initSchema() {
     CREATE TABLE IF NOT EXISTS physician_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       chief_complaint TEXT,
       history_present_illness TEXT,
       past_medical_history TEXT,
@@ -203,9 +224,11 @@ function initSchema() {
       nursing_notes TEXT,
       medical_decision_making TEXT,
       allergies TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       created_by TEXT,
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
 
@@ -225,6 +248,9 @@ function initSchema() {
   try {
     db.run('ALTER TABLE physician_notes ADD COLUMN allergies TEXT');
   } catch (e) {}
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
 
   // Add review_of_systems column if it doesn't exist
   try {
@@ -240,6 +266,7 @@ function initSchema() {
     CREATE TABLE IF NOT EXISTS nursing_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       nurse_name TEXT,
       time TEXT,
       blood_pressure TEXT,
@@ -247,33 +274,70 @@ function initSchema() {
       temperature TEXT,
       weight TEXT,
       note TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
   db.run(`
     CREATE TABLE IF NOT EXISTS imaging (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       label TEXT NOT NULL,
       image_data TEXT,
       annotations TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
   db.run(`
     CREATE TABLE IF NOT EXISTS allergies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
       allergen TEXT NOT NULL,
       type TEXT NOT NULL,
       reaction TEXT,
       first_encounter TEXT,
+      is_shared INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
+
+  // Add columns if they don't exist (for existing databases)
+  try {
+    db.run('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN is_shared INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE orders ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE problems ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE consultations ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE studies ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE nursing_notes ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE imaging ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE allergies ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
 }
 
 function seedData() {
@@ -284,10 +348,12 @@ function seedData() {
   let userId;
   if (demoUser) {
     userId = demoUser.id;
+    // Update demo user to admin role
+    dbRun('UPDATE users SET role = ? WHERE email = ?', ['admin', 'demo@gmail.com']);
   } else {
     const bcrypt = require('bcryptjs');
     const hash = bcrypt.hashSync('demo123', 10);
-    dbRun('INSERT INTO users (email, password_hash, display_name) VALUES (?, ?, ?)', ['demo@gmail.com', hash, 'Dr. Demo']);
+    dbRun('INSERT INTO users (email, password_hash, display_name, role) VALUES (?, ?, ?, ?)', ['demo@gmail.com', hash, 'Dr. Demo', 'admin']);
     const newUser = dbGet('SELECT id FROM users WHERE email = ?', ['demo@gmail.com']);
     userId = newUser ? newUser.id : null;
   }
@@ -336,8 +402,8 @@ function seedData() {
   ];
 
   for (const m of medsData) {
-    dbRun('INSERT INTO medications (patient_mr, name, dose, freq, route, start, prescriber, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [m.mr, m.name, m.dose, m.freq, m.route, m.start, m.prescriber, m.type]);
+    dbRun('INSERT INTO medications (patient_mr, user_id, name, dose, freq, route, start, prescriber, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [m.mr, userId, m.name, m.dose, m.freq, m.route, m.start, m.prescriber, m.type]);
   }
 
   seedClinicalData();
@@ -346,6 +412,10 @@ function seedData() {
 function seedClinicalData() {
   const count = dbGet('SELECT COUNT(*) AS cnt FROM orders');
   if (count && count.cnt > 0) return;
+
+  // Get the demo user ID
+  const demoUser = dbGet('SELECT id FROM users WHERE email = ?', ['demo@gmail.com']);
+  const userId = demoUser ? demoUser.id : 1;
 
   const ordersData = [
     { mr:"MR-00421", type:"labs",     name:"CBC",              priority:"STAT",    order_date:"06/01/2026", status:"Completed", ordered_by:"Dr. Smith", notes:"" },
@@ -362,8 +432,8 @@ function seedClinicalData() {
 
   for (const o of ordersData) {
     dbRun(
-      'INSERT INTO orders (patient_mr, type, name, priority, order_date, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [o.mr, o.type, o.name, o.priority, o.order_date, o.status, o.ordered_by, o.notes]
+      'INSERT INTO orders (patient_mr, user_id, type, name, priority, order_date, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [o.mr, userId, o.type, o.name, o.priority, o.order_date, o.status, o.ordered_by, o.notes]
     );
   }
 
@@ -379,8 +449,8 @@ function seedClinicalData() {
 
   for (const prob of problemsData) {
     dbRun(
-      'INSERT INTO problems (patient_mr, name, category, status) VALUES (?, ?, ?, ?)',
-      [prob.mr, prob.name, prob.category, prob.status]
+      'INSERT INTO problems (patient_mr, user_id, name, category, status) VALUES (?, ?, ?, ?, ?)',
+      [prob.mr, userId, prob.name, prob.category, prob.status]
     );
   }
 
@@ -393,8 +463,8 @@ function seedClinicalData() {
 
   for (const c of consultsData) {
     dbRun(
-      'INSERT INTO consultations (patient_mr, specialty, requested_date, status, consultant, summary, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [c.mr, c.specialty, c.requested_date, c.status, c.consultant, c.summary, c.requested_by]
+      'INSERT INTO consultations (patient_mr, user_id, specialty, requested_date, status, consultant, summary, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [c.mr, userId, c.specialty, c.requested_date, c.status, c.consultant, c.summary, c.requested_by]
     );
   }
 
@@ -408,8 +478,8 @@ function seedClinicalData() {
 
   for (const s of studiesData) {
     dbRun(
-      'INSERT INTO studies (patient_mr, name, study_date, result, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [s.mr, s.name, s.study_date, s.result, s.status, s.ordered_by, s.notes]
+      'INSERT INTO studies (patient_mr, user_id, name, study_date, result, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [s.mr, userId, s.name, s.study_date, s.result, s.status, s.ordered_by, s.notes]
     );
   }
 }
