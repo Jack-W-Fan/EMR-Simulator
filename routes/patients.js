@@ -23,6 +23,11 @@ function getPatientClinicalData(mr, userId) {
   };
 }
 
+function isPatientLocked(mr, userId) {
+  const lock = dbGet('SELECT id FROM patient_locks WHERE patient_mr = ? AND user_id = ?', [mr, userId]);
+  return !!lock;
+}
+
 router.get('/', requireAuth, (req, res) => {
   getDb();
   // Get user's own patients plus shared patients from admins
@@ -63,6 +68,12 @@ router.post('/:mr/medications', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
+
   const { name, dose, freq, route, start, prescriber, type } = req.body;
   if (!name) {
     return res.status(400).json({ error: 'Medication name is required.' });
@@ -89,6 +100,12 @@ router.delete('/:mr/medications/:id', requireAuth, (req, res) => {
 router.post('/:mr/orders', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
 
   const { type, name, priority, order_date, status, notes } = req.body;
   if (!type || !name) {
@@ -117,6 +134,12 @@ router.delete('/:mr/orders/:id', requireAuth, (req, res) => {
 router.post('/:mr/problems', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
 
   const { name, category, status } = req.body;
   if (!name) return res.status(400).json({ error: 'Problem name is required.' });
@@ -154,6 +177,12 @@ router.post('/:mr/consultations', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
+
   const { specialty, requested_date, status, consultant, summary } = req.body;
   if (!specialty) return res.status(400).json({ error: 'Specialty is required.' });
 
@@ -179,6 +208,12 @@ router.delete('/:mr/consultations/:id', requireAuth, (req, res) => {
 router.post('/:mr/studies', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
 
   const { name, study_date, result, status, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Study name is required.' });
@@ -256,13 +291,32 @@ router.delete('/:mr', requireAdmin, (req, res) => {
   dbRun('DELETE FROM nursing_notes WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM imaging WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM allergies WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM patient_locks WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patients WHERE mr = ? AND user_id = ?', [mr, req.session.userId]);
+  res.json({ success: true });
+});
+
+router.post('/:mr/lock', requireAuth, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if already locked
+  const existingLock = dbGet('SELECT id FROM patient_locks WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+  if (existingLock) return res.status(400).json({ error: 'Patient already locked' });
+
+  dbRun('INSERT INTO patient_locks (patient_mr, user_id) VALUES (?, ?)', [req.params.mr, req.session.userId]);
   res.json({ success: true });
 });
 
 router.post('/:mr/physician-notes', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
 
   const {
     chief_complaint,
@@ -292,6 +346,12 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
 router.post('/:mr/nursing-notes', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
 
   const { nurse_name, time, blood_pressure, heart_rate, temperature, weight, note } = req.body;
 
@@ -326,6 +386,12 @@ router.post('/:mr/imaging', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
+
   const { label, image_data, annotations } = req.body;
   if (!label) {
     return res.status(400).json({ error: 'Label is required.' });
@@ -352,6 +418,12 @@ router.delete('/:mr/imaging/:id', requireAuth, (req, res) => {
 router.post('/:mr/allergies', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if patient is locked (admin can bypass)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role !== 'admin' && isPatientLocked(req.params.mr, req.session.userId)) {
+    return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
+  }
 
   const { allergen, type, reaction, first_encounter } = req.body;
   if (!allergen || !type) {

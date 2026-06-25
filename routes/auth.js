@@ -63,11 +63,30 @@ router.get('/me', (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
+  getDb();
+  const user = dbGet('SELECT * FROM users WHERE id = ?', [req.session.userId]);
   res.json({
     user: {
       email: req.session.email,
       displayName: req.session.displayName,
+      role: user.role || 'user',
     }
+  });
+});
+
+router.get('/user', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  getDb();
+  const user = dbGet('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+  res.json({
+    id: user.id,
+    email: user.email,
+    lastName: user.last_name,
+    firstName: user.first_name,
+    displayName: user.display_name || user.email,
+    role: user.role || 'user',
   });
 });
 

@@ -310,6 +310,19 @@ function initSchema() {
     )
   `);
 
+  // Create patient_locks table to track user-patient locks
+  db.run(`
+    CREATE TABLE IF NOT EXISTS patient_locks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      locked_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(patient_mr, user_id),
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   // Add columns if they don't exist (for existing databases)
   try {
     db.run('ALTER TABLE users ADD COLUMN role TEXT DEFAULT "user"');

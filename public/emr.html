@@ -1547,7 +1547,25 @@ function toggleNoteDetails(id) {
 // ── PDF REPORT GENERATION ──
 async function generateReport() {
   if (!currentPatient) return;
-  
+
+  // Check if user is admin
+  const isAdmin = await fetch('/api/auth/user').then(r => r.json()).then(u => u.role === 'admin').catch(() => false);
+
+  // If not admin, ask for confirmation to lock the patient
+  if (!isAdmin) {
+    const confirmed = confirm('Generating this report will lock this patient. You will not be able to make further changes to this patient after the report is generated. Do you want to continue?');
+    if (!confirmed) return;
+
+    // Lock the patient
+    try {
+      await api('POST', `/api/patients/${currentPatient.mr}/lock`);
+      alert('Patient has been locked. You can no longer make changes to this patient.');
+    } catch (e) {
+      alert('Error locking patient: ' + e.message);
+      return;
+    }
+  }
+
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
