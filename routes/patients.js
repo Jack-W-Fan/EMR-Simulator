@@ -10,12 +10,44 @@ function getPatientForUser(mr, userId) {
 }
 
 function getPatientClinicalData(mr, userId) {
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [userId]);
+  const isAdmin = user && user.role === 'admin';
+
+  // Check if patient is locked for this user (student has generated report)
+  const patientLocked = isPatientLocked(mr, userId);
+
+  // For orders (labs):
+  // - Admin sees all shared orders with results
+  // - Students see only their own orders; results hidden until report generated
+  let ordersQuery;
+  if (isAdmin) {
+    ordersQuery = 'SELECT * FROM orders WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
+  } else if (patientLocked) {
+    ordersQuery = 'SELECT id, patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, CASE WHEN result_unlocked = 1 THEN result ELSE NULL END as result FROM orders WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+  } else {
+    ordersQuery = 'SELECT id, patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, NULL as result FROM orders WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+  }
+
+  // For studies (imaging):
+  // - Admin sees all shared studies
+  // - Students see only their own studies until they generate report, then see their studies with results
+  let studiesQuery;
+  if (isAdmin) {
+    studiesQuery = 'SELECT * FROM studies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
+  } else if (patientLocked) {
+    // After report generation, show student's studies with results
+    studiesQuery = 'SELECT id, patient_mr, user_id, name, study_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, CASE WHEN result_unlocked = 1 THEN result ELSE NULL END as result FROM studies WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+  } else {
+    // Before report generation, show only student's studies without results
+    studiesQuery = 'SELECT id, patient_mr, user_id, name, study_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, NULL as result FROM studies WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+  }
+
   return {
     medications: dbAll('SELECT * FROM medications WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id', [mr, userId]),
-    orders: dbAll('SELECT * FROM orders WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    orders: dbAll(ordersQuery, [mr, userId]),
     problems: dbAll('SELECT * FROM problems WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id', [mr, userId]),
     consultations: dbAll('SELECT * FROM consultations WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
-    studies: dbAll('SELECT * FROM studies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
+    studies: dbAll(studiesQuery, [mr, userId]),
     physicianNotes: dbAll('SELECT * FROM physician_notes WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
     nursingNotes: dbAll('SELECT * FROM nursing_notes WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
     imaging: dbAll('SELECT * FROM imaging WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC', [mr, userId]),
@@ -107,18 +139,24 @@ router.post('/:mr/orders', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
   }
 
-  const { type, name, priority, order_date, status, notes } = req.body;
+  const { type, category, name, priority, order_date, status, notes, result: resultValue } = req.body;
   if (!type || !name) {
     return res.status(400).json({ error: 'Order type and name are required.' });
   }
 
+  // Admin's orders are shared so students can match against them
+  const isAdminUser = user && user.role === 'admin';
+  const isShared = isAdminUser ? 1 : 0;
+  // If admin sets a result, it's immediately unlocked (visible to admin, used for matching)
+  const unlocked = resultValue ? 1 : 0;
+
   const orderedBy = req.session.displayName || req.session.username;
-  const result = dbRun(
-    'INSERT INTO orders (patient_mr, user_id, type, name, priority, order_date, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, type, name, priority || 'Routine', order_date || null, status || 'Pending', orderedBy, notes || '']
+  const insertResult = dbRun(
+    'INSERT INTO orders (patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result, result_unlocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, type, category || null, name, priority || 'Routine', order_date || null, status || 'Pending', orderedBy, notes || '', isShared, resultValue || '', unlocked]
   );
 
-  const order = dbGet('SELECT * FROM orders WHERE id = ?', [result.lastInsertRowid]);
+  const order = dbGet('SELECT * FROM orders WHERE id = ?', [insertResult.lastInsertRowid]);
   res.status(201).json(order);
 });
 
@@ -277,6 +315,18 @@ router.put('/:mr', requireAuth, (req, res) => {
   res.json(updated);
 });
 
+router.put('/:mr/profile-pic', requireAuth, (req, res) => {
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admin can change profile picture' });
+  }
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+  const { profile_pic } = req.body;
+  dbRun('UPDATE patients SET profile_pic = ?, updated_at = datetime(\'now\') WHERE mr = ?', [profile_pic || null, req.params.mr]);
+  res.json({ success: true, profile_pic });
+});
+
 router.delete('/:mr', requireAdmin, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
@@ -306,6 +356,80 @@ router.post('/:mr/lock', requireAuth, (req, res) => {
 
   dbRun('INSERT INTO patient_locks (patient_mr, user_id) VALUES (?, ?)', [req.params.mr, req.session.userId]);
   res.json({ success: true });
+});
+
+// Alias-to-canonical map for lab test names (so student-ordered "CBC" matches parsed "CBC" etc.)
+const LAB_NAME_ALIASES = {
+  'cbc': 'CBC', 'cbc with differential': 'CBC', 'wbc': 'WBC', 'white blood cell count': 'WBC', 'rbc': 'RBC', 'red blood cell count': 'RBC',
+  'hemoglobin': 'Hgb', 'hgb': 'Hgb', 'hgb/hct': 'Hgb', 'hematocrit': 'Hct', 'hct': 'Hct',
+  'platelets': 'Platelets', 'platelet count': 'Platelets', 'pit': 'Platelets', 'plt': 'Platelets',
+  'sodium (na+)': 'Na', 'na': 'Na', 'potassium (k+)': 'K', 'k': 'K', 'chloride (cl-)': 'Cl', 'cl': 'Cl',
+  'bicarbonate (hco3-)': 'CO2', 'co2': 'CO2',
+  'glucose': 'Glu', 'glu': 'Glu', 'bun': 'BUN', 'urea nitrogen (bun)': 'BUN',
+  'creatinine': 'Cr', 'cr': 'Cr',
+  'ast (sgot)': 'AST', 'ast': 'AST', 'alt (sgpt)': 'ALT', 'alt': 'ALT',
+  'alkaline phosphatase': 'Alk Phos', 'alk phos': 'Alk Phos',
+  'lipase': 'Lipase', 'amylase': 'Amylase', 'ldh': 'LDH',
+  'calcium': 'Ca', 'ca': 'Ca', 'magnesium': 'Mag', 'mag': 'Mag',
+  'inr': 'INR', 'pt/inr': 'INR', 'pt': 'PT', 'ptt': 'PTT',
+  'd-dimer': 'D-dimer', 'fibrinogen': 'Fibrinogen', 'hba1c': 'HbA1c', 'hemoglobin a1c': 'HbA1c',
+  'tsh': 'TSH', 'free t4': 'Free T4', 'cortisol': 'Cortisol',
+  'urinalysis': 'UA', 'ua': 'UA',
+  'bmp (basic metabolic panel)': 'BMP', 'bmp': 'BMP',
+  'cmp (comprehensive metabolic panel)': 'CMP', 'cmp': 'CMP',
+  'liver function panel': 'LFTs', 'lfts': 'LFTs',
+  'lipid panel': 'Lipid Panel',
+  'ferritin': 'Ferritin', 'vitamin b12': 'Vitamin B12', 'folate': 'Folate',
+  'crp': 'CRP', 'esr': 'ESR',
+  'blood culture': 'Blood Culture', 'urine culture': 'Urine Culture',
+  'hiv test': 'HIV Test', 'aborh type': 'ABORH Type'
+};
+
+function normalizeLabName(name) {
+  if (!name) return name;
+  const lower = name.trim().toLowerCase();
+  return LAB_NAME_ALIASES[lower] || name.trim();
+}
+
+router.post('/:mr/unlock-results', requireAuth, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Check if user is admin (admin doesn't need to unlock)
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role === 'admin') {
+    return res.json({ success: true, message: 'Admin always sees results' });
+  }
+
+  // Unlock all lab orders for this user - match by normalized name against admin's shared orders
+  const orders = dbAll('SELECT id, name FROM orders WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+  for (const order of orders) {
+    const normalized = normalizeLabName(order.name);
+    // Try exact match first, then normalized match
+    let sharedOrder = dbGet('SELECT result FROM orders WHERE patient_mr = ? AND name = ? AND is_shared = 1 LIMIT 1', [req.params.mr, order.name]);
+    if ((!sharedOrder || !sharedOrder.result) && normalized !== order.name) {
+      sharedOrder = dbGet('SELECT result FROM orders WHERE patient_mr = ? AND name = ? AND is_shared = 1 LIMIT 1', [req.params.mr, normalized]);
+    }
+    if (sharedOrder && sharedOrder.result) {
+      dbRun('UPDATE orders SET result = ?, result_unlocked = 1, status = ? WHERE id = ?', [sharedOrder.result, 'Completed', order.id]);
+    } else {
+      // No matching admin result — mark as Not Indicated
+      dbRun('UPDATE orders SET result = ?, result_unlocked = 1, status = ? WHERE id = ?', ['Not Indicated', 'Completed', order.id]);
+    }
+  }
+
+  // Unlock all imaging studies for this user - only if they match admin's studies
+  const studies = dbAll('SELECT id, name FROM studies WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+  for (const study of studies) {
+    // Get the actual result from the shared study (admin's study) - exact name match
+    const sharedStudy = dbGet('SELECT result FROM studies WHERE patient_mr = ? AND name = ? AND is_shared = 1 LIMIT 1', [req.params.mr, study.name]);
+    if (sharedStudy && sharedStudy.result) {
+      dbRun('UPDATE studies SET result = ?, result_unlocked = 1 WHERE id = ?', [sharedStudy.result, study.id]);
+    }
+    // If no matching admin study found, don't unlock - student won't see this result
+  }
+
+  res.json({ success: true, message: 'Results unlocked' });
 });
 
 router.post('/:mr/physician-notes', requireAuth, (req, res) => {

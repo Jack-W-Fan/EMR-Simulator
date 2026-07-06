@@ -95,11 +95,12 @@ function initSchema() {
       phone TEXT DEFAULT '—',
       ins TEXT DEFAULT '—',
       allergy TEXT DEFAULT 'None',
-      bp TEXT DEFAULT '—',
-      hr TEXT DEFAULT '—',
-      temp TEXT DEFAULT '—',
-      wt TEXT DEFAULT '—',
-      is_shared INTEGER DEFAULT 0,
+  bp TEXT DEFAULT '—',
+  hr TEXT DEFAULT '—',
+  temp TEXT DEFAULT '—',
+  wt TEXT DEFAULT '—',
+  is_shared INTEGER DEFAULT 0,
+  profile_pic TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id)
@@ -138,6 +139,7 @@ function initSchema() {
       patient_mr TEXT NOT NULL,
       user_id INTEGER NOT NULL,
       type TEXT NOT NULL,
+      category TEXT,
       name TEXT NOT NULL,
       priority TEXT DEFAULT 'Routine',
       order_date TEXT,
@@ -145,6 +147,8 @@ function initSchema() {
       ordered_by TEXT,
       notes TEXT,
       is_shared INTEGER DEFAULT 0,
+      result TEXT,
+      result_unlocked INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (patient_mr) REFERENCES patients(mr),
       FOREIGN KEY (user_id) REFERENCES users(id)
@@ -196,6 +200,7 @@ function initSchema() {
       ordered_by TEXT,
       notes TEXT,
       is_shared INTEGER DEFAULT 0,
+      result_unlocked INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (patient_mr) REFERENCES patients(mr),
       FOREIGN KEY (user_id) REFERENCES users(id)
@@ -350,6 +355,9 @@ function initSchema() {
   } catch (e) {}
   try {
     db.run('ALTER TABLE allergies ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN profile_pic TEXT');
   } catch (e) {}
 }
 

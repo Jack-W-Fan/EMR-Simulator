@@ -274,6 +274,7 @@
     background: var(--blue-pale); border: 3px solid var(--blue-mid);
     display: flex; align-items: center; justify-content: center;
     font-size: 36px; color: var(--blue-mid); margin: 0 auto 12px;
+    overflow: hidden;
   }
 
   .action-bar {
@@ -487,7 +488,8 @@
         <div class="info-card">
           <div class="info-card-header"><i class="ti ti-user"></i> Patient's Information</div>
           <div class="info-card-body">
-            <div class="patient-photo"><i class="ti ti-user"></i></div>
+            <div class="patient-photo" id="patientPhoto" onclick="handlePhotoClick()"><i class="ti ti-user"></i></div>
+            <input type="file" id="profilePicInput" accept="image/*" style="display:none" />
             <div id="patInfo"></div>
           </div>
         </div>
@@ -563,6 +565,8 @@ let patients = [];
 let currentPatient = null;
 let currentSection = 'note';
 let currentUser = '';
+let currentUserEmail = '';
+let currentUserRole = '';
 let currentMeds = [];
 let currentOrders = [];
 let currentProblems = [];
@@ -583,11 +587,15 @@ const PROBLEM_CATEGORIES = {
   'Gastrointestinal': ['GERD','IBS','Peptic Ulcer Disease','Crohn\'s Disease'],
 };
 
-const ORDER_OPTIONS = {
-  labs: ['CBC', 'BMP', 'Lipid Panel', 'HbA1c', 'TSH', 'Urinalysis', 'PT/INR', 'Troponin'],
-  imaging: ['Chest X-Ray', 'CT Chest', 'CT Abdomen/Pelvis', 'MRI Brain', 'Ultrasound Abdomen', 'Echocardiogram', 'X-Ray Knee'],
-  consults: ['Cardiology', 'Neurology', 'Orthopedics', 'Gastroenterology', 'Pulmonology', 'Endocrinology', 'Nephrology'],
-  studies: ['EKG', 'Echocardiogram', 'Stress Test', 'PFT', 'Holter Monitor', 'Diabetic Eye Exam', 'ABI', 'Sleep Study'],
+const ORDER_CATEGORIES = {
+  'Hematologic': ['CBC with Differential', 'White Blood Cell Count', 'Red Blood Cell Count', 'Hemoglobin', 'Hematocrit', 'Platelet Count', 'MCV', 'MCH', 'MCHC', 'RDW', 'Reticulocyte Count', 'Peripheral Smear', 'ESR', 'CRP', 'Ferritin', 'Iron Studies', 'Total Iron Binding Capacity', 'Transferrin Saturation', 'Vitamin B12', 'Folate', 'INR', 'Partial Thromboplastin Time (PTT)', 'Prothrombin Time (PT)', 'Thrombin Time', 'D-dimer', 'Fibrin Degradation Products', 'Fibrinogen', 'Hemoglobin A1c', 'ABORH Type', 'Direct Coombs', 'Indirect Coombs', 'Haptoglobin', 'LDH', 'Bleeding Time', 'Clotting Time'],
+  'Blood Plasma/Serum': ['Sodium (Na+)', 'Potassium (K+)', 'Chloride (Cl-)', 'Bicarbonate (HCO3-)', 'BMP (Basic Metabolic Panel)', 'CMP (Comprehensive Metabolic Panel)', 'Liver Function Panel', 'Electrolyte Panel', 'Renal Function Panel', 'Urea Nitrogen (BUN)', 'Creatinine', 'Glucose', 'AST (SGOT)', 'ALT (SGPT)', 'Alkaline Phosphatase', 'GGT', 'Total Bilirubin', 'Direct Bilirubin', 'Indirect Bilirubin', 'Albumin', 'Total Protein', 'Lipase', 'Amylase', 'Calcium', 'Phosphorus', 'Magnesium'],
+  'Lipids': ['Total Cholesterol', 'HDL Cholesterol', 'LDL Cholesterol', 'Triglycerides', 'VLDL Cholesterol', 'ApoA1', 'ApoB', 'Lipoprotein(a)'],
+  'Genetics': ['Chromosomal Microarray', 'Karyotype', 'Fragile X Testing', 'BRCA1/2 Testing', 'CFTR Mutation Analysis', 'Pharmacogenomics Panel', 'HLA Typing', 'Newborn Screening', 'Carrier Screening'],
+  'Endocrine': ['TSH', 'Free T4', 'Free T3', 'Total T4', 'Total T3', 'TPO Antibodies', 'Thyroglobulin Antibodies', 'Cortisol', 'ACTH', 'IGF-1', 'PTH', 'Vitamin D (25-OH)', 'Vitamin D (1,25-OH)', 'Insulin', 'C-Peptide', 'Glucagon', 'Testosterone', 'Estradiol', 'FSH', 'LH', 'Progesterone', 'Prolactin', 'DHEA-S', 'Androstenedione', 'Cortisol Binding Globulin', 'Sex Hormone Binding Globulin'],
+  'Urine': ['Urinalysis', 'Urine Culture', 'Urine Microalbumin', '24-Hour Urine Protein', '24-Hour Urine Creatinine', 'Urine Electrolytes', 'Urine Osmolality', 'Urine Specific Gravity', 'Urine pH', 'Urine Ketones', 'Urine Glucose', 'Urine Protein', 'Urine Red Blood Cells', 'Urine White Blood Cells', 'Urine Casts', 'Urine Crystals', 'Urine Nitrites', 'Urine Leukocyte Esterase', 'Urine Bilirubin', 'Urine Urobilinogen'],
+  'Cerebrospinal Fluid': ['CSF Cell Count', 'CSF Protein', 'CSF Glucose', 'CSF Culture', 'CSF VDRL', 'CSF Oligoclonal Bands', 'CSF IgG Index', 'CSF Myelin Basic Protein', 'CSF Opening Pressure', 'CSF Closing Pressure', 'CSF Lactate', 'CSF Chloride'],
+  'Infectious Disease': ['Blood Culture', 'Urine Culture', 'Throat Culture', 'Sputum Culture', 'Wound Culture', 'Stool Culture', 'CSF Culture', 'HIV Test', 'HIV Viral Load', 'HIV Genotype', 'Hepatitis A IgM', 'Hepatitis B Surface Antigen', 'Hepatitis B Surface Antibody', 'Hepatitis B Core Antibody', 'Hepatitis B DNA', 'Hepatitis C Antibody', 'Hepatitis C RNA', 'TB Test (PPD)', 'TB Quantiferon', 'TB Culture', 'COVID-19 PCR', 'COVID-19 Antigen', 'COVID-19 Antibody', 'Influenza A/B', 'RSV', 'Streptococcus Group A', 'Chlamydia', 'Gonorrhea', 'Syphilis RPR', 'Syphilis FTA-ABS']
 };
 
 const CONSULT_SPECIALTIES = ['Cardiology', 'Neurology', 'Orthopedics', 'Gastroenterology', 'Pulmonology', 'Endocrinology', 'Nephrology', 'Psychiatry', 'Dermatology'];
@@ -619,6 +627,8 @@ async function api(method, url, body) {
   try {
     const data = await api('GET', '/api/auth/me');
     currentUser = data.user.displayName || data.user.email;
+    currentUserEmail = data.user.email;
+    currentUserRole = data.user.role || '';
     goSchedule();
   } catch {
     // not logged in, redirect to index.html
@@ -926,12 +936,54 @@ function problemStatusBadge(status, id) {
   return '<span class="badge ready" style="cursor:pointer" onclick="showStatusDropdown(\'problem\', '+id+', event, [\'active\', \'inactive\', \'in the past\'])"><span class="badge-dot dot-ready"></span>Active</span>';
 }
 
+function updatePatientPhoto() {
+  const p = currentPatient;
+  if (!p) return;
+  const photoDiv = document.getElementById('patientPhoto');
+  if (p.profile_pic) {
+    photoDiv.innerHTML = `<img src="${p.profile_pic}" alt="Patient photo" style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />`;
+  } else {
+    photoDiv.innerHTML = '<i class="ti ti-user"></i>';
+  }
+  if (currentUserRole === 'admin') {
+    photoDiv.style.cursor = 'pointer';
+    photoDiv.title = 'Click to upload profile picture';
+  } else {
+    photoDiv.style.cursor = 'default';
+    photoDiv.title = '';
+  }
+}
+
+function handlePhotoClick() {
+  if (currentUserRole !== 'admin') return;
+  document.getElementById('profilePicInput').click();
+}
+
+document.getElementById('profilePicInput')?.addEventListener('change', async function(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file || !currentPatient) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const dataUrl = ev.target.result;
+    try {
+      await api('PUT', `/api/patients/${currentPatient.mr}/profile-pic`, { profile_pic: dataUrl });
+      currentPatient.profile_pic = dataUrl;
+      updatePatientPhoto();
+    } catch (err) {
+      alert('Error uploading profile picture: ' + err.message);
+    }
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
 async function openPatient(i) {
   currentPatient = patients[i];
   const p = currentPatient;
   currentOrderType = 'all';
 
   await loadPatientData(p.mr);
+  updatePatientPhoto();
 
   document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
   document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr;
@@ -966,6 +1018,7 @@ async function openPatient(i) {
 function updatePatientInfo() {
   if (!currentPatient) return;
   const p = currentPatient;
+  updatePatientPhoto();
   document.getElementById('patInfo').innerHTML = `
     <div class="info-row"><span class="info-label">Full Name</span><span class="info-value">${p.name}</span></div>
     <div class="info-row"><span class="info-label">Date of Birth</span><span class="info-value">${p.dob}</span></div>
@@ -1051,44 +1104,57 @@ function renderSection(sec) {
   }
 
   else if (sec === 'labs') {
-    const labOrders = currentOrders.filter(o => o.type === 'labs' || o.type === 'Lab');
-    const refRanges = { 'Hgb':'13.5-17.5 g/dL','hematocrit':'38.3-48.6%','platelets':'150-450 K/uL','WBC':'4.5-11.0 K/uL','Na':'136-145 mEq/L','K':'3.5-5.1 mEq/L','Cl':'98-107 mEq/L','Co2':'23-29 mEq/L','Glu':'70-100 mg/dL','BUN':'7-20 mg/dL','Cr':'0.6-1.2 mg/dL','AST':'10-40 U/L','ALT':'7-56 U/L','Alk Phos':'44-147 U/L','lipase':'0-160 U/L','CBC':'(see components)','Chem 7':'(see components)','LFTs':'(see components)' };
+    // Build valid test names set from ORDER_CATEGORIES plus common aliases
+    const validLabNames = new Set([
+      'CBC', 'WBC', 'RBC', 'Hemoglobin', 'Hgb', 'Hgb/Hct', 'Hematocrit', 'Hct', 'Platelets', 'Platelet Count', 'Pit', 'Plt', 'MCV', 'MCH', 'MCHC', 'RDW', 'ESR', 'CRP', 'Ferritin', 'INR', 'PT/INR', 'PT', 'PTT', 'D-dimer', 'Fibrinogen', 'HbA1c', 'LDH', 'BUN', 'Creatinine', 'Cr', 'Glucose', 'Glu', 'AST', 'ALT', 'Alk Phos', 'Alkaline Phosphatase', 'Lipase', 'Amylase', 'Calcium', 'Ca', 'Magnesium', 'Mag', 'Sodium (Na+)', 'Na', 'Potassium (K+)', 'K', 'Chloride (Cl-)', 'Cl', 'Bicarbonate (HCO3-)', 'CO2', 'BMP', 'CMP', 'LFTs', 'Lipid Panel', 'TSH', 'Free T4', 'Cortisol', 'Vitamin D', 'Urinalysis', 'UA', 'Blood Culture', 'Urine Culture', 'HIV Test', 'ABORH Type'
+    ]);
+    Object.values(ORDER_CATEGORIES).forEach(cat => cat.forEach(item => validLabNames.add(item)));
+    // Only show orders whose name matches a valid lab test (case-insensitive)
+    const labOrders = currentOrders.filter(o => {
+      if (o.type !== 'labs' && o.type !== 'Lab') return false;
+      return [...validLabNames].some(n => n.toLowerCase() === (o.name || '').toLowerCase());
+    });
+    const refRanges = { 'Hemoglobin':'13.5-17.5 g/dL','Hgb':'13.5-17.5 g/dL','Hgb/Hct':'13.5-17.5 g/dL','Hematocrit':'38.3-48.6%','Hct':'38.3-48.6%','Platelet Count':'150-450 K/uL','Platelets':'150-450 K/uL','Pit':'150-450 K/uL','Plt':'150-450 K/uL','WBC':'4.5-11.0 K/uL','White Blood Cell Count':'4.5-11.0 K/uL','RBC':'4.5-5.9 M/uL','Red Blood Cell Count':'4.5-5.9 M/uL','MCV':'80-100 fL','MCH':'27-34 pg','MCHC':'32-36 g/dL','RDW':'11.5-14.5%','INR':'0.8-1.2','PT':'11-13.5 sec','PTT':'25-35 sec','D-dimer':'<0.5 mcg/mL','Fibrinogen':'200-400 mg/dL','HbA1c':'<5.7%','Hemoglobin A1c':'<5.7%','Sodium (Na+)':'136-145 mEq/L','Na':'136-145 mEq/L','Potassium (K+)':'3.5-5.1 mEq/L','K':'3.5-5.1 mEq/L','Chloride (Cl-)':'98-107 mEq/L','Cl':'98-107 mEq/L','Bicarbonate (HCO3-)':'23-29 mEq/L','CO2':'23-29 mEq/L','Glucose':'70-100 mg/dL','Glu':'70-100 mg/dL','BUN':'7-20 mg/dL','Urea Nitrogen (BUN)':'7-20 mg/dL','Creatinine':'0.6-1.2 mg/dL','Cr':'0.6-1.2 mg/dL','AST (SGOT)':'10-40 U/L','AST':'10-40 U/L','ALT (SGPT)':'7-56 U/L','ALT':'7-56 U/L','Alkaline Phosphatase':'44-147 U/L','Alk Phos':'44-147 U/L','GGT':'5-40 U/L','Total Bilirubin':'0.1-1.2 mg/dL','Direct Bilirubin':'0-0.3 mg/dL','Albumin':'3.4-5.4 g/dL','Total Protein':'6.0-8.3 g/dL','Lipase':'0-160 U/L','Amylase':'30-110 U/L','Calcium':'8.5-10.5 mg/dL','Ca':'8.5-10.5 mg/dL','Magnesium':'1.7-2.2 mg/dL','Mag':'1.7-2.2 mg/dL','Phosphorus':'2.5-4.5 mg/dL','Total Cholesterol':'<200 mg/dL','LDL Cholesterol':'<100 mg/dL','HDL Cholesterol':'>40 mg/dL','Triglycerides':'<150 mg/dL','LDH':'140-280 U/L','Ferritin':'20-250 ng/mL','Vitamin B12':'200-900 pg/mL','Folate':'5-20 ng/mL','TSH':'0.4-4.0 mIU/L','Free T4':'0.8-1.8 ng/dL','Cortisol':'6-23 mcg/dL','Vitamin D (25-OH)':'30-100 ng/mL','CRP':'<3 mg/L','ESR':'0-20 mm/hr','CBC':'(see components)','BMP':'(see components)','CMP':'(see components)','LFTs':'(see components)','Lipid Panel':'(see components)' };
+    const isDemoUser = currentUserEmail === 'demo@gmail.com';
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-test-pipe"></i> Lab Results</div>
         <div class="info-card-body">
           ${labOrders.length ? `<div style="margin-bottom:16px;">
             ${labOrders.map(o => {
-              const ref = refRanges[o.name] || '—';
+              const ref = Object.keys(refRanges).find(k => k.toLowerCase() === (o.name || '').toLowerCase()) ? refRanges[Object.keys(refRanges).find(k => k.toLowerCase() === (o.name || '').toLowerCase())] : '—';
               return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:8px;margin-bottom:8px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:4px;">
                 <div class="field"><label>Test Name</label><div style="font-size:12px;padding:6px 0;">${o.name}</div></div>
+                <div class="field"><label>Category</label><div style="font-size:12px;padding:6px 0;">${o.category || '—'}</div></div>
                 <div class="field"><label>Status</label><div style="font-size:12px;padding:6px 0;">${o.status || 'Normal'}</div></div>
-                <div class="field"><label>Result Value</label><div style="font-size:12px;padding:6px 0;">—</div></div>
+                <div class="field"><label>Result Value</label><div style="font-size:12px;padding:6px 0;">${o.result || '—'}</div></div>
                 <div class="field"><label>Reference Range</label><div style="font-size:12px;padding:6px 0;">${ref}</div></div>
                 <div class="field"><label>Ordered By</label><div style="font-size:12px;padding:6px 0;">${o.ordered_by || '—'}</div></div>
                 <div class="field"><label>Date Ordered</label><div style="font-size:12px;padding:6px 0;">${o.order_date || '—'}</div></div>
               </div>`;
             }).join('')}
           </div>` : '<div class="empty-state"><i class="ti ti-test-pipe"></i>No lab results on file</div>'}
-          <div class="lab-form">
+          ${isDemoUser ? `
+          <div class="lab-form" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+            <div style="font-weight:600;font-size:12px;color:var(--text-muted);margin-bottom:8px;">Add Lab Result (Demo Only)</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="field"><label>Test Name</label><input type="text" id="labTestName" placeholder="e.g. CBC, BMP, Lipid Panel" /></div>
+              <div class="field"><label>Category / Test</label>
+                <select id="labTestName" style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:12px;"><option value="">— Select a test —</option>${Object.entries(ORDER_CATEGORIES).map(([cat, items]) => `<optgroup label="${cat}">${items.map(item => `<option value="${item}" data-category="${cat}">${item}</option>`).join('')}</optgroup>`).join('')}</select>
+              </div>
+              <div class="field"><label>Result Value</label><input type="text" id="labResult" placeholder="e.g. 14.2 g/dL" /></div>
               <div class="field"><label>Date Ordered</label><input type="date" id="labOrderDate" /></div>
-              <div class="field"><label>Result Value</label><input type="text" id="labResult" placeholder="e.g. 5.2 mmol/L" /></div>
-              <div class="field"><label>Reference Range</label><input type="text" id="labRefRange" placeholder="e.g. 3.9&ndash;5.5 mmol/L" /></div>
               <div class="field"><label>Status</label>
                 <select id="labStatus" style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:12px;">
-                  <option>Normal</option><option>Abnormal Low</option><option>Abnormal High</option><option>Critical</option>
+                  <option>Completed</option><option>Pending</option><option>Cancelled</option>
                 </select>
               </div>
               <div class="field"><label>Ordered By</label><input type="text" id="labOrderedBy" value="${p.sched}" /></div>
             </div>
-            <div class="field"><label>Notes</label><textarea id="labNotes" placeholder="Additional notes about lab results&hellip;"></textarea></div>
+            <div class="field"><label>Notes</label><textarea id="labNotes" placeholder="Additional notes&hellip;" style="width:100%;min-height:60px;"></textarea></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
-              <button class="btn btn-outline" onclick="clearLabForm()">Clear</button>
               <button class="btn btn-green" onclick="saveLabResult()"><i class="ti ti-device-floppy"></i> Save</button>
             </div>
-          </div>
+          </div>` : ''}
         </div>
       </div>`;
   }
@@ -1098,6 +1164,20 @@ function renderSection(sec) {
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-photo-scan"></i> Imaging</div>
         <div class="info-card-body">
+          ${currentStudies.length ? `
+          <div style="margin-bottom:16px;">
+            <div style="font-weight:600;font-size:12px;color:var(--text-muted);margin-bottom:8px;">Imaging Studies:</div>
+            ${currentStudies.map(study => {
+              const resultVisible = study.result_unlocked === 1;
+              return `<div style="background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:4px;padding:12px;margin-bottom:8px;">
+                <div style="font-weight:600;font-size:13px;margin-bottom:8px;">${study.name}</div>
+                <div style="font-size:12px;margin-bottom:8px;"><strong>Study Date:</strong> ${study.study_date || '—'}</div>
+                <div style="font-size:12px;margin-bottom:8px;"><strong>Status:</strong> ${study.status || '—'}</div>
+                <div style="font-size:12px;margin-bottom:8px;"><strong>Result:</strong> ${resultVisible ? (study.result || '—') : '<span style="color:var(--text-muted);font-style:italic;">Generate report to view</span>'}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${study.created_at}</div>
+              </div>`;
+            }).join('')}
+          </div>` : '<div style="margin-bottom:16px;"><div class="empty-state"><i class="ti ti-photo-scan"></i>No imaging studies on file</div></div>'}
           ${currentImaging.length ? `
           <div style="margin-bottom:16px;">
             <div style="font-weight:600;font-size:12px;color:var(--text-muted);margin-bottom:8px;">Saved Images:</div>
@@ -1178,6 +1258,14 @@ function renderSection(sec) {
     else if (currentOrderType === 'consults') displayOrders = consultOrders;
     else if (currentOrderType === 'studies') displayOrders = studyOrders;
     const typeLabel = currentOrderType === 'all' ? '' : currentOrderType === 'labs' ? 'Lab' : currentOrderType === 'imaging' ? 'Imaging' : currentOrderType === 'consults' ? 'Consult' : currentOrderType === 'studies' ? 'Study' : '';
+
+    const addedNames = currentOrders.map(o => o.name);
+    const optionsHtml = Object.entries(ORDER_CATEGORIES).map(([cat, items]) =>
+      `<optgroup label="${cat}">${items.map(item =>
+        `<option value="${item}" ${addedNames.includes(item) ? 'disabled' : ''}>${item}</option>`
+      ).join('')}</optgroup>`
+    ).join('');
+
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header">
@@ -1193,48 +1281,51 @@ function renderSection(sec) {
         <div class="info-card-body" style="padding:0">
           ${displayOrders.length ? `
           <table class="med-table">
-            <thead><tr><th>Type</th><th>Order</th><th>Priority</th><th>Date</th><th>Status</th><th>Ordered By</th><th>Notes</th><th style="width:50px"></th></tr></thead>
+            <thead><tr><th>Type</th><th>Category</th><th>Order</th><th>Priority</th><th>Date</th><th>Status</th><th>Ordered By</th><th style="min-width:160px">Notes</th><th style="width:50px"></th></tr></thead>
             <tbody>${displayOrders.map(o=>`
               <tr>
                 <td style="font-weight:600;text-transform:capitalize">${o.type}</td>
+                <td>${o.category||'—'}</td>
                 <td style="font-weight:600">${o.name}</td>
                 <td>${o.priority}</td>
                 <td>${o.order_date||'—'}</td>
                 <td>${orderStatusBadge(o.status, o.id)}</td>
                 <td>${o.ordered_by||'—'}</td>
-                <td title="${o.notes||''}">${o.notes||'—'}</td>
+                <td title="${o.notes||''}" style="max-width:200px;word-break:break-word;white-space:normal">${o.notes||'—'}</td>
                 <td><button class="remove-btn" onclick="deleteOrder(${o.id})" title="Remove"><i class="ti ti-x"></i></button></td>
               </tr>`).join('')}
             </tbody>
           </table>` : `<div class="empty-state"><i class="ti ti-clipboard-plus"></i>No ${typeLabel.toLowerCase()} orders on file</div>`}
         </div>
         <div class="info-card-body" style="border-top:1px solid var(--border)">
-          <div class="lab-form">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="field"><label>Order Type</label>
-                <select id="orderTypeSelect" onchange="updateOrderOptions()">
-                  <option value="labs">Lab</option>
-                  <option value="imaging">Imaging</option>
-                  <option value="consults">Consult</option>
-                  <option value="studies">Study</option>
-                </select>
-              </div>
-              <div class="field"><label>Order</label>
-                <select id="orderName" onchange="toggleCustomInput('orderName', 'orderNameCustom')">${ORDER_OPTIONS['labs'].map(n=>`<option value="${n}">${n}</option>`).join('')}<option value="other">Other (specify below)</option></select>
-              </div>
-              <div class="field" id="orderNameCustomField" style="display:none;"><label>Custom Order Name</label><input type="text" id="orderNameCustom" placeholder="Enter custom order name" /></div>
-              <div class="field"><label>Priority</label>
-                <select id="orderPriority"><option>Routine</option><option>Urgent</option><option>STAT</option></select>
-              </div>
-              <div class="field"><label>Order Date</label><input type="date" id="orderDate" /></div>
-              <div class="field"><label>Status</label>
-                <select id="orderStatus"><option>Pending</option><option>Completed</option><option>Cancelled</option></select>
-              </div>
+          <div class="problem-add-row">
+            <div class="field">
+              <label>Order Type</label>
+              <select id="orderTypeSelect">
+                <option value="labs">Lab</option>
+                <option value="imaging">Imaging</option>
+                <option value="consults">Consult</option>
+                <option value="studies">Study</option>
+              </select>
             </div>
-            <div class="field"><label>Notes</label><textarea id="orderNotes" placeholder="Clinical indication or notes&hellip;"></textarea></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="btn btn-green" onclick="addOrder()"><i class="ti ti-plus"></i> Place Order</button>
+            <div class="field">
+              <label>Select Order</label>
+              <select id="orderName" onchange="toggleCustomInput('orderName', 'orderNameCustom')"><option value="">— Choose an order —</option>${optionsHtml}<option value="other">Other (specify below)</option></select>
             </div>
+          </div>
+          <div class="field" id="orderNameCustomField" style="display:none;margin-bottom:16px;"><label>Custom Order Name</label><input type="text" id="orderNameCustom" placeholder="Enter custom order name" /></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="field"><label>Priority</label>
+              <select id="orderPriority"><option>Routine</option><option>Urgent</option><option>STAT</option></select>
+            </div>
+            <div class="field"><label>Order Date</label><input type="date" id="orderDate" /></div>
+            <div class="field"><label>Status</label>
+              <select id="orderStatus"><option>Pending</option><option>Completed</option><option>Cancelled</option></select>
+            </div>
+          </div>
+          <div class="field"><label>Notes</label><textarea id="orderNotes" placeholder="Clinical indication or notes&hellip;" style="width:100%;min-height:120px;"></textarea></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="btn btn-green" onclick="addOrder()"><i class="ti ti-plus"></i> Place Order</button>
           </div>
         </div>
       </div>`;
@@ -1458,12 +1549,7 @@ function toggleCustomInput(selectId, customFieldId) {
 }
 
 function updateOrderOptions() {
-  const typeSelect = document.getElementById('orderTypeSelect');
-  const orderNameSelect = document.getElementById('orderName');
-  if (!typeSelect || !orderNameSelect) return;
-  const selectedType = typeSelect.value;
-  const options = ORDER_OPTIONS[selectedType] || [];
-  orderNameSelect.innerHTML = options.map(n => `<option value="${n}">${n}</option>`).join('') + '<option value="other">Other (specify below)</option>';
+  // Options are now built from ORDER_CATEGORIES in renderSection
 }
 
 // ── PHYSICIAN NOTES ──
@@ -1551,17 +1637,18 @@ async function generateReport() {
   // Check if user is admin
   const isAdmin = await fetch('/api/auth/user').then(r => r.json()).then(u => u.role === 'admin').catch(() => false);
 
-  // If not admin, ask for confirmation to lock the patient
+  // If not admin, ask for confirmation to lock the patient and unlock results
   if (!isAdmin) {
-    const confirmed = confirm('Generating this report will lock this patient. You will not be able to make further changes to this patient after the report is generated. Do you want to continue?');
+    const confirmed = confirm('Generating this report will lock this patient and reveal lab/imaging results. You will not be able to make further changes to this patient after the report is generated. Do you want to continue?');
     if (!confirmed) return;
 
-    // Lock the patient
+    // Lock the patient and unlock results
     try {
       await api('POST', `/api/patients/${currentPatient.mr}/lock`);
-      alert('Patient has been locked. You can no longer make changes to this patient.');
+      await api('POST', `/api/patients/${currentPatient.mr}/unlock-results`);
+      alert('Patient has been locked and results are now visible.');
     } catch (e) {
-      alert('Error locking patient: ' + e.message);
+      alert('Error: ' + e.message);
       return;
     }
   }
@@ -2115,6 +2202,18 @@ async function addOrder() {
   const nameSelect = document.getElementById('orderName')?.value;
   const nameCustom = document.getElementById('orderNameCustom')?.value;
   let name = nameSelect;
+  let category = null;
+
+  // Find category from ORDER_CATEGORIES
+  if (nameSelect && nameSelect !== 'other') {
+    for (const [cat, items] of Object.entries(ORDER_CATEGORIES)) {
+      if (items.includes(nameSelect)) {
+        category = cat;
+        break;
+      }
+    }
+  }
+
   if (nameSelect === 'other') {
     name = nameCustom;
     if (!name) { alert('Please enter a custom order name.'); return; }
@@ -2123,6 +2222,7 @@ async function addOrder() {
   try {
     await api('POST', `/api/patients/${currentPatient.mr}/orders`, {
       type: typeSelect,
+      category,
       name,
       priority: document.getElementById('orderPriority')?.value,
       order_date: document.getElementById('orderDate')?.value || null,
@@ -2139,7 +2239,7 @@ async function addOrder() {
     if (document.getElementById('orderNameCustomField').style.display === 'block') {
       document.getElementById('orderNameCustom').value = '';
       document.getElementById('orderNameCustomField').style.display = 'none';
-      document.getElementById('orderName').value = ORDER_OPTIONS[typeSelect][0];
+      document.getElementById('orderName').value = '';
     }
   } catch (e) {
     alert('Error placing order: ' + e.message);
@@ -2367,26 +2467,30 @@ async function deleteAllergy(id) {
 }
 
 function clearLabForm() {
-  document.getElementById('labTestName').value = '';
-  document.getElementById('labOrderDate').value = '';
-  document.getElementById('labResult').value = '';
-  document.getElementById('labRefRange').value = '';
-  document.getElementById('labStatus').value = 'Normal';
-  document.getElementById('labOrderedBy').value = currentPatient?.sched || '';
-  document.getElementById('labNotes').value = '';
+  const el = id => document.getElementById(id);
+  if (el('labTestName')) el('labTestName').value = '';
+  if (el('labOrderDate')) el('labOrderDate').value = '';
+  if (el('labResult')) el('labResult').value = '';
+  if (el('labStatus')) el('labStatus').value = 'Completed';
+  if (el('labOrderedBy')) el('labOrderedBy').value = currentPatient?.sched || '';
+  if (el('labNotes')) el('labNotes').value = '';
 }
 
 async function saveLabResult() {
   if (!currentPatient) return;
-  const name = document.getElementById('labTestName')?.value?.trim();
-  if (!name) { alert('Enter a test name.'); return; }
+  const sel = document.getElementById('labTestName');
+  const name = sel?.value?.trim();
+  if (!name) { alert('Select a test name.'); return; }
+  const category = sel.options[sel.selectedIndex]?.getAttribute('data-category') || null;
   try {
     await api('POST', `/api/patients/${currentPatient.mr}/orders`, {
       type: 'labs',
+      category,
       name,
+      result: document.getElementById('labResult')?.value || '',
       priority: 'Routine',
       order_date: document.getElementById('labOrderDate')?.value || null,
-      status: document.getElementById('labStatus')?.value || 'Pending',
+      status: document.getElementById('labStatus')?.value || 'Completed',
       notes: document.getElementById('labNotes')?.value || ''
     });
     await loadPatientData(currentPatient.mr);
@@ -2396,6 +2500,7 @@ async function saveLabResult() {
     alert('Error saving lab: ' + e.message);
   }
 }
+
 </script>
 </body>
 </html>
