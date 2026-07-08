@@ -339,13 +339,31 @@ function initSchema() {
     db.run('ALTER TABLE orders ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
   } catch (e) {}
   try {
+    db.run('ALTER TABLE orders ADD COLUMN is_shared INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE orders ADD COLUMN result TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE orders ADD COLUMN result_unlocked INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
     db.run('ALTER TABLE problems ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
   } catch (e) {}
   try {
     db.run('ALTER TABLE consultations ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
   } catch (e) {}
   try {
+    db.run('ALTER TABLE consultations ADD COLUMN is_shared INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
     db.run('ALTER TABLE studies ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE studies ADD COLUMN is_shared INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE studies ADD COLUMN result_unlocked INTEGER DEFAULT 0');
   } catch (e) {}
   try {
     db.run('ALTER TABLE nursing_notes ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
