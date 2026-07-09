@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>EMR Simulator v.01</title>
+<title>EMR Simulator</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -380,7 +380,7 @@
     <div class="logo-circle"><i class="ti ti-building-hospital"></i></div>
     <div class="top-title">
       Electronic Medical Record
-      <small>EMR Simulator v.01 — Training System</small>
+      <small>EMR Simulator</small>
     </div>
     <div class="top-right">
       <span id="loggedInUser"></span>
@@ -389,12 +389,7 @@
     </div>
   </div>
 
-  <div class="nav-bar">
-    <div class="nav-item active" onclick="showTab(this,'scheduleMain')">Schedule</div>
-    <div class="nav-item" onclick="showTab(this,'scheduleMain')">Patients</div>
-    <div class="nav-item" onclick="showTab(this,'scheduleMain')">Reports</div>
-    <div class="nav-item" onclick="showTab(this,'scheduleMain')">Settings</div>
-  </div>
+
 
   <div class="content" id="scheduleMain">
     <div class="page-header">
@@ -452,7 +447,7 @@
     <div class="logo-circle"><i class="ti ti-building-hospital"></i></div>
     <div class="top-title">
       Electronic Medical Record
-      <small>EMR Simulator v.01 — Training System</small>
+      <small>EMR Simulator</small>
     </div>
     <div class="top-right">
       <span id="patientLoggedUser" style="cursor:pointer;text-decoration:underline;" onclick="openProfileModal()" title="Edit Profile"></span>
@@ -464,6 +459,7 @@
   <div class="action-bar">
     <button class="btn-tab" onclick="goSchedule()"><i class="ti ti-arrow-left"></i> Back</button>
     <button class="btn-tab" onclick="generateReport()"><i class="ti ti-file-download"></i> Generate Report</button>
+    <button class="btn-tab" id="addendumBtn" onclick="openAddendumModal()" style="opacity:0.4;pointer-events:none;"><i class="ti ti-file-plus"></i> Add Addendum</button>
     <button class="btn-tab active-tab" id="noteTabBtn" onclick="setSection('note')"><i class="ti ti-file-text"></i> Note</button>
     <button class="btn-tab" onclick="confirmDeletePatient()" style="color:var(--red);"><i class="ti ti-trash"></i> Delete Patient</button>
     <span style="margin-left:auto; color:rgba(255,255,255,0.85); font-size:11px;" id="patientBadge"></span>
@@ -545,6 +541,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="addendumModal">
+  <div class="modal" style="width:500px;">
+    <h3><i class="ti ti-file-plus"></i> Add Addendum</h3>
+    <p style="font-size:11px;color:#666;margin-bottom:12px;">Write an addendum to be appended to the physician note.</p>
+    <div class="field">
+      <label>Addendum Text</label>
+      <textarea id="addendumText" rows="8" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:10px;font-size:12px;resize:vertical;" placeholder="Enter addendum text..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeAddendumModal()">Cancel</button>
+      <button class="btn btn-green" onclick="submitAddendum()">Submit Addendum</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="profileModal">
   <div class="modal">
     <h3><i class="ti ti-user"></i> Edit Profile</h3>
@@ -567,6 +578,7 @@ let currentSection = 'note';
 let currentUser = '';
 let currentUserEmail = '';
 let currentUserRole = '';
+let addendumEnabled = false;
 let currentMeds = [];
 let currentOrders = [];
 let currentProblems = [];
@@ -984,6 +996,14 @@ async function openPatient(i) {
 
   await loadPatientData(p.mr);
   updatePatientPhoto();
+
+  // Check if patient is already locked (report already generated)
+  addendumEnabled = false;
+  try {
+    const lockStatus = await api('GET', `/api/patients/${p.mr}/lock-status`);
+    if (lockStatus.locked) { addendumEnabled = true; }
+  } catch (e) {}
+  updateAddendumBtn();
 
   document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
   document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr;
@@ -1631,6 +1651,222 @@ function toggleNoteDetails(id) {
 }
 
 // ── PDF REPORT GENERATION ──
+function updateAddendumBtn() {
+  const btn = document.getElementById('addendumBtn');
+  if (addendumEnabled) {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  } else {
+    btn.style.opacity = '0.4';
+    btn.style.pointerEvents = 'none';
+  }
+}
+
+function buildReportContent(doc, p) {
+  let y = 20;
+  const lineHeight = 7;
+  const pageHeight = 280;
+
+  function checkNewPage(neededSpace) {
+    if (y + neededSpace > pageHeight) { doc.addPage(); y = 20; }
+  }
+
+  function addText(text, label, isBold) {
+    if (!text) return;
+    checkNewPage(lineHeight * 2);
+    if (label) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(label, 20, y);
+      y += lineHeight;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, 170);
+    doc.text(lines, 20, y);
+    y += lines.length * lineHeight;
+    y += 3;
+  }
+
+  // Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('Physician Note Report', 20, y);
+  y += 12;
+
+  // Patient Information
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('Patient Information', 20, y);
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Name: ${p.name}`, 20, y); y += lineHeight;
+  doc.text(`MR Number: ${p.mr}`, 20, y); y += lineHeight;
+  doc.text(`DOB: ${p.dob}`, 20, y); y += lineHeight;
+  doc.text(`Sex: ${p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : 'Other'}`, 20, y); y += lineHeight;
+  doc.text(`Phone: ${p.phone || '—'}`, 20, y); y += lineHeight;
+  doc.text(`Insurance: ${p.ins || '—'}`, 20, y); y += lineHeight;
+  y += 5;
+
+  // Get the most recent physician note
+  const latestNote = currentPhysicianNotes.length > 0 ? currentPhysicianNotes[0] : null;
+
+  if (latestNote) {
+    checkNewPage(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Physician Note', 20, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Date: ${latestNote.visit_date || latestNote.created_at}`, 20, y); y += lineHeight;
+    doc.text(`Visit Type: ${latestNote.visit_type || '—'}`, 20, y); y += lineHeight;
+    doc.text(`Signed by: ${latestNote.created_by || '—'}`, 20, y); y += lineHeight;
+    y += 5;
+
+    addText(latestNote.chief_complaint, 'Chief Complaint:', true);
+    addText(latestNote.history_present_illness, 'History of Present Illness:', true);
+    addText(latestNote.past_medical_history, 'Past Medical History:', true);
+    addText(latestNote.surgical_history, 'Surgical History:', true);
+    addText(latestNote.hospitalizations, 'Hospitalizations:', true);
+
+    checkNewPage(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Medications', 20, y);
+    y += 8;
+
+    if (currentMeds && currentMeds.length > 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      currentMeds.forEach(med => {
+        checkNewPage(lineHeight * 6);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${med.name}`, 20, y);
+        y += lineHeight;
+        doc.setFont('helvetica', 'normal');
+        if (med.dose) { doc.text(`Dose: ${med.dose}`, 25, y); y += lineHeight; }
+        if (med.freq) { doc.text(`Frequency: ${med.freq}`, 25, y); y += lineHeight; }
+        if (med.route) { doc.text(`Route: ${med.route}`, 25, y); y += lineHeight; }
+        if (med.start) { doc.text(`Start Date: ${med.start}`, 25, y); y += lineHeight; }
+        if (med.prescriber) { doc.text(`Prescriber: ${med.prescriber}`, 25, y); y += lineHeight; }
+        y += 2;
+      });
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('No medications on file', 20, y);
+      y += lineHeight;
+    }
+    y += 5;
+
+    checkNewPage(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Allergies', 20, y);
+    y += 8;
+
+    if (currentAllergies && currentAllergies.length > 0) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      currentAllergies.forEach(allergy => {
+        checkNewPage(lineHeight * 4);
+        doc.setFont('helvetica', 'bold');
+        const allergyType = allergy.type ? allergy.type.charAt(0).toUpperCase() + allergy.type.slice(1) : 'Unknown';
+        doc.text(`${allergy.allergen} (${allergyType})`, 20, y);
+        y += lineHeight;
+        doc.setFont('helvetica', 'normal');
+        if (allergy.reaction) { doc.text(`Reaction: ${allergy.reaction}`, 25, y); y += lineHeight; }
+        if (allergy.first_encounter) { doc.text(`First Encountered: ${allergy.first_encounter}`, 25, y); y += lineHeight; }
+        y += 2;
+      });
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('No allergies on file', 20, y);
+      y += lineHeight;
+    }
+    y += 5;
+
+    addText(latestNote.health_maintenance, 'Health Maintenance/Immunizations:', true);
+    addText(latestNote.family_history, 'Family History:', true);
+    addText(latestNote.social_history, 'Social History:', true);
+    addText(latestNote.review_of_systems, 'Review of Systems:', true);
+    addText(latestNote.physical_exam, 'Physical Exam:', true);
+    addText(latestNote.assessment, 'Assessment:', true);
+    addText(latestNote.plan, 'Plan:', true);
+  } else {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('No physician notes on file for this patient.', 20, y);
+  }
+
+  return y;
+}
+
+function openAddendumModal() {
+  if (!addendumEnabled) { alert('Please generate the report first before adding an addendum.'); return; }
+  document.getElementById('addendumModal').classList.add('open');
+  document.getElementById('addendumText').value = '';
+}
+
+function closeAddendumModal() {
+  document.getElementById('addendumModal').classList.remove('open');
+}
+
+async function submitAddendum() {
+  const addendum = document.getElementById('addendumText').value.trim();
+  if (!addendum) { alert('Please enter addendum text.'); return; }
+  closeAddendumModal();
+
+  const now = new Date();
+  const timestamp = now.toLocaleString('en-US', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  const signedBy = currentUser || 'Dr. Unknown';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const p = currentPatient;
+    const lineHeight = 7;
+    let y = buildReportContent(doc, p);
+
+    // Addendum section
+    y += 5;
+    doc.setDrawColor(200);
+    doc.line(20, y, 190, y);
+    y += 8;
+    if (y + 20 > 280) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Addendum', 20, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Date: ${timestamp}`, 20, y); y += lineHeight;
+    y += 3;
+    const addendumLines = doc.splitTextToSize(addendum, 170);
+    doc.text(addendumLines, 20, y);
+    y += addendumLines.length * lineHeight;
+    y += 5;
+
+    // Signed by
+    y += 5;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.text(`Signed by: ${signedBy}`, 20, y);
+
+    const fileName = `${p.name.replace(/\s+/g, '_')}_Addendum_${now.toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+  } catch (error) {
+    console.error('Error generating addendum PDF:', error);
+    alert('Error generating addendum: ' + error.message);
+  }
+}
+
 async function generateReport() {
   if (!currentPatient) return;
 
@@ -1658,206 +1894,22 @@ async function generateReport() {
     const doc = new jsPDF();
     
     const p = currentPatient;
-    let y = 20;
     const lineHeight = 7;
-    const pageHeight = 280;
-    
-    // Helper function to check if we need a new page
-    function checkNewPage(neededSpace) {
-      if (y + neededSpace > pageHeight) {
-        doc.addPage();
-        y = 20;
-      }
-    }
-    
-    // Helper function to add text with word wrap
-    function addText(text, label, isBold = false) {
-      if (!text) return;
-      checkNewPage(lineHeight * 2);
-      
-      if (label) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.text(label, 20, y);
-        y += lineHeight;
-      }
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      const lines = doc.splitTextToSize(text, 170);
-      doc.text(lines, 20, y);
-      y += lines.length * lineHeight;
-      y += 3;
-    }
-    
-    // Header
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('Physician Note Report', 20, y);
-    y += 12;
-    
-    // Patient Information
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Patient Information', 20, y);
-    y += 8;
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Name: ${p.name}`, 20, y); y += lineHeight;
-    doc.text(`MR Number: ${p.mr}`, 20, y); y += lineHeight;
-    doc.text(`DOB: ${p.dob}`, 20, y); y += lineHeight;
-    doc.text(`Sex: ${p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : 'Other'}`, 20, y); y += lineHeight;
-    doc.text(`Phone: ${p.phone || '—'}`, 20, y); y += lineHeight;
-    doc.text(`Insurance: ${p.ins || '—'}`, 20, y); y += lineHeight;
-    y += 5;
-    
-    // Get the most recent physician note
-    const latestNote = currentPhysicianNotes.length > 0 ? currentPhysicianNotes[0] : null;
-    
-    if (latestNote) {
-      // Note metadata
-      checkNewPage(20);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text('Physician Note', 20, y);
-      y += 8;
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text(`Date: ${latestNote.visit_date || latestNote.created_at}`, 20, y); y += lineHeight;
-      doc.text(`Visit Type: ${latestNote.visit_type || '—'}`, 20, y); y += lineHeight;
-      doc.text(`Signed by: ${latestNote.created_by || '—'}`, 20, y); y += lineHeight;
-      y += 5;
-      
-      // Chief Complaint
-      addText(latestNote.chief_complaint, 'Chief Complaint:', true);
-      
-      // History of Present Illness
-      addText(latestNote.history_present_illness, 'History of Present Illness:', true);
-      
-      // Past Medical History
-      addText(latestNote.past_medical_history, 'Past Medical History:', true);
-      
-      // Surgical History
-      addText(latestNote.surgical_history, 'Surgical History:', true);
-      
-      // Hospitalizations
-      addText(latestNote.hospitalizations, 'Hospitalizations:', true);
-      
-      // Medications
-      checkNewPage(20);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('Medications', 20, y);
-      y += 8;
-      
-      if (currentMeds && currentMeds.length > 0) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        currentMeds.forEach(med => {
-          checkNewPage(lineHeight * 6);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`${med.name}`, 20, y);
-          y += lineHeight;
-          doc.setFont('helvetica', 'normal');
-          if (med.dose) {
-            doc.text(`Dose: ${med.dose}`, 25, y);
-            y += lineHeight;
-          }
-          if (med.freq) {
-            doc.text(`Frequency: ${med.freq}`, 25, y);
-            y += lineHeight;
-          }
-          if (med.route) {
-            doc.text(`Route: ${med.route}`, 25, y);
-            y += lineHeight;
-          }
-          if (med.start) {
-            doc.text(`Start Date: ${med.start}`, 25, y);
-            y += lineHeight;
-          }
-          if (med.prescriber) {
-            doc.text(`Prescriber: ${med.prescriber}`, 25, y);
-            y += lineHeight;
-          }
-          y += 2;
-        });
-      } else {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text('No medications on file', 20, y);
-        y += lineHeight;
-      }
-      y += 5;
-      
-      // Allergies
-      checkNewPage(20);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('Allergies', 20, y);
-      y += 8;
-      
-      if (currentAllergies && currentAllergies.length > 0) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        currentAllergies.forEach(allergy => {
-          checkNewPage(lineHeight * 4);
-          doc.setFont('helvetica', 'bold');
-          const allergyType = allergy.type ? allergy.type.charAt(0).toUpperCase() + allergy.type.slice(1) : 'Unknown';
-          doc.text(`${allergy.allergen} (${allergyType})`, 20, y);
-          y += lineHeight;
-          doc.setFont('helvetica', 'normal');
-          if (allergy.reaction) {
-            doc.text(`Reaction: ${allergy.reaction}`, 25, y);
-            y += lineHeight;
-          }
-          if (allergy.first_encounter) {
-            doc.text(`First Encountered: ${allergy.first_encounter}`, 25, y);
-            y += lineHeight;
-          }
-          y += 2;
-        });
-      } else {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.text('No allergies on file', 20, y);
-        y += lineHeight;
-      }
-      y += 5;
-      
-      // Health Maintenance/Immunizations
-      addText(latestNote.health_maintenance, 'Health Maintenance/Immunizations:', true);
-      
-      // Family History
-      addText(latestNote.family_history, 'Family History:', true);
-      
-      // Social History
-      addText(latestNote.social_history, 'Social History:', true);
-      
-      // Review of Systems
-      addText(latestNote.review_of_systems, 'Review of Systems:', true);
-      
-      // Physical Exam
-      addText(latestNote.physical_exam, 'Physical Exam:', true);
-      
-      // Assessment
-      addText(latestNote.assessment, 'Assessment:', true);
-      
-      // Plan
-      addText(latestNote.plan, 'Plan:', true);
+    let y = buildReportContent(doc, p);
 
-      // Nursing Notes
-      addText(latestNote.nursing_notes, 'Nursing Notes:', true);
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('No physician notes on file for this patient.', 20, y);
-    }
-    
+    // Signed by
+    y += 5;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.text(`Signed by: ${currentUser || 'Dr. Unknown'}`, 20, y);
+
     // Save the PDF
     const fileName = `${p.name.replace(/\s+/g, '_')}_Physician_Note_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+
+    // Enable addendum button
+    addendumEnabled = true;
+    updateAddendumBtn();
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Error generating PDF: ' + error.message);

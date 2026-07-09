@@ -346,6 +346,13 @@ router.delete('/:mr', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
+router.get('/:mr/lock-status', requireAuth, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+  const lock = dbGet('SELECT id FROM patient_locks WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+  res.json({ locked: !!lock });
+});
+
 router.post('/:mr/lock', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });

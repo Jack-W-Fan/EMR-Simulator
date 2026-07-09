@@ -1,5 +1,5 @@
 const mammoth = require('mammoth');
-const pdfParse = require('pdf-parse');
+const { PDFParse, VerbosityLevel } = require('pdf-parse');
 
 function parseEHRText(text) {
   const patientData = {
@@ -468,8 +468,10 @@ async function parseEHRFile(buffer, mimeType) {
   let text = '';
 
   if (mimeType === 'application/pdf') {
-    const data = await pdfParse(buffer);
-    text = data.text;
+    const pdf = new PDFParse({ data: buffer, verbosity: VerbosityLevel.ERRORS });
+    await pdf.load();
+    const pdfResult = await pdf.getText();
+    text = pdfResult.text;
   } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
     const result = await mammoth.extractRawText({ buffer });
     text = result.value;
