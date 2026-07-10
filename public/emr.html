@@ -591,12 +591,17 @@ let currentAllergies = [];
 let currentOrderType = 'all';
 
 const PROBLEM_CATEGORIES = {
-  'Cardiovascular':   ['Hypertension','Coronary Artery Disease','Heart Failure','Atrial Fibrillation','Hyperlipidemia'],
-  'Endocrine':        ['Type 2 Diabetes','Hypothyroidism','Obesity','Metabolic Syndrome'],
-  'Respiratory':      ['Asthma','COPD','Obstructive Sleep Apnea','Chronic Bronchitis'],
-  'Musculoskeletal':  ['Osteoarthritis','Rheumatoid Arthritis','Osteoporosis','Low Back Pain'],
-  'Neurological':     ['Migraine','Stroke','Epilepsy','Peripheral Neuropathy'],
-  'Gastrointestinal': ['GERD','IBS','Peptic Ulcer Disease','Crohn\'s Disease'],
+  'Cardiovascular':   ['Hypertension','Coronary Artery Disease','Heart Failure','Atrial Fibrillation','Hyperlipidemia','Peripheral Artery Disease','Deep Vein Thrombosis','Pulmonary Embolism','Aortic Stenosis','Dilated Cardiomyopathy','Hypertrophic Cardiomyopathy','Venous Insufficiency','Varicose Veins','Endocarditis','Rheumatic Heart Disease','Myocardial Infarction','Ventricular Tachycardia','Congestive Heart Failure','Pulmonary Hypertension','Cardiomyopathy'],
+  'Endocrine':        ['Type 2 Diabetes','Hypothyroidism','Obesity','Metabolic Syndrome','Type 1 Diabetes','Hyperthyroidism','Cushing\'s Syndrome','Addison\'s Disease','Hyperparathyroidism','Adrenal Insufficiency','Polycystic Ovary Syndrome','Diabetes Insipidus','Growth Hormone Deficiency','Hypoglycemia','Hypoparathyroidism'],
+  'Respiratory':      ['Asthma','COPD','Obstructive Sleep Apnea','Chronic Bronchitis','Pulmonary Fibrosis','Bronchiectasis','Pulmonary Embolism','Cystic Fibrosis','Interstitial Lung Disease','Pneumonia','Chronic Sinusitis','Sarcoidosis','Acute Respiratory Failure','Lung Cancer','Sleep Apnea'],
+  'Musculoskeletal':  ['Osteoarthritis','Rheumatoid Arthritis','Osteoporosis','Low Back Pain','Fibromyalgia','Gout','Ankylosing Spondylitis','Carpal Tunnel Syndrome','Rotator Cuff Syndrome','Tendonitis','Bursitis','Herniated Disc','Degenerative Disc Disease','Scoliosis','Polymyalgia Rheumatica'],
+  'Neurological':     ['Migraine','Stroke','Epilepsy','Peripheral Neuropathy','Parkinson\'s Disease','Multiple Sclerosis','Alzheimer\'s Disease','ALS','Dementia','Tension Headache','Transient Ischemic Attack','Bell\'s Palsy','Sciatica','Myasthenia Gravis','Essential Tremor'],
+  'Gastrointestinal': ['GERD','IBS','Peptic Ulcer Disease','Crohn\'s Disease','Celiac Disease','Ulcerative Colitis','Diverticulitis','Hemorrhoids','Gastritis','Cholecystitis','Pancreatitis','Liver Cirrhosis','Fatty Liver Disease','H. pylori Infection','Gallstones'],
+  'Psychiatric':      ['Major Depressive Disorder','Generalized Anxiety Disorder','Bipolar Disorder','PTSD','OCD','Schizophrenia','ADHD','Social Anxiety Disorder','Panic Disorder','Borderline Personality Disorder','Eating Disorder','Insomnia','Intermittent Explosive Disorder','Substance Use Disorder','Anxiety Disorder'],
+  'Dermatological':   ['Eczema','Psoriasis','Acne Vulgaris','Rosacea','Contact Dermatitis','Urticaria','Seborrheic Dermatitis','Atopic Dermatitis','Cellulitis','Melanoma','Basal Cell Carcinoma','Alopecia','Vitiligo','Lichen Planus','Skin Cancer'],
+  'Renal/Urologic':   ['Chronic Kidney Disease','Recurrent UTI','Nephrolithiasis','Benign Prostatic Hyperplasia','Polycystic Kidney Disease','End-Stage Renal Disease','Acute Kidney Injury','Overactive Bladder','Interstitial Cystitis','Erectile Dysfunction','Hematuria','Bladder Cancer','Kidney Cancer','Prostate Cancer','Urinary Incontinence'],
+  'Infectious':       ['Chronic Hepatitis B','Chronic Hepatitis C','HIV/AIDS','Tuberculosis','Lyme Disease','Hepatitis A','Herpes Simplex Virus','HPV','Shingles','Mononucleosis','Syphilis','Malaria','Endocarditis','Septic Arthritis','Epstein-Barr Virus'],
+  'Oncologic':        ['Breast Cancer','Lung Cancer','Prostate Cancer','Colorectal Cancer','Ovarian Cancer','Leukemia','Lymphoma','Multiple Myeloma','Melanoma','Pancreatic Cancer','Thyroid Cancer','Cervical Cancer','Bladder Cancer','Endometrial Cancer','Gastric Cancer'],
 };
 
 const ORDER_CATEGORIES = {
