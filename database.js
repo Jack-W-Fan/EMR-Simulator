@@ -133,6 +133,9 @@ function initSchema() {
   try {
     db.run('ALTER TABLE medications ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
   } catch (e) {}
+  try {
+    db.run('ALTER TABLE medications ADD COLUMN is_shared INTEGER DEFAULT 0');
+  } catch (e) {}
   db.run(`
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -359,6 +362,9 @@ function initSchema() {
     db.run('ALTER TABLE orders ADD COLUMN result_unlocked INTEGER DEFAULT 0');
   } catch (e) {}
   try {
+    db.run('ALTER TABLE orders ADD COLUMN category TEXT');
+  } catch (e) {}
+  try {
     db.run('ALTER TABLE problems ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
   } catch (e) {}
   try {
@@ -384,6 +390,9 @@ function initSchema() {
   } catch (e) {}
   try {
     db.run('ALTER TABLE allergies ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE allergies ADD COLUMN is_shared INTEGER DEFAULT 0');
   } catch (e) {}
   try {
     db.run('ALTER TABLE patients ADD COLUMN profile_pic TEXT');
