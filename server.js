@@ -3,9 +3,17 @@ const session = require('express-session');
 const path = require('path');
 const dotenv = require('dotenv');
 const multer = require('multer');
+const { GoogleGenAI } = require('@google/genai');
 const { initDb } = require('./database');
 
 dotenv.config();
+
+let genAI = null;
+try {
+  genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} catch (e) {
+  console.warn('GEMINI_API_KEY not set. AI features will be unavailable.');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -76,3 +84,5 @@ initDb().then(() => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
 });
+
+module.exports = { app, genAI };

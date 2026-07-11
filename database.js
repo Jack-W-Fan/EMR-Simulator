@@ -327,6 +327,17 @@ function initSchema() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS interview_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      chat_data TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
 
   // Add columns if they don't exist (for existing databases)
   try {

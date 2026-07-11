@@ -2,6 +2,16 @@ const express = require('express');
 const { getDb, dbGet, dbAll, dbRun } = require('../database');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
+let genAI = null;
+try {
+  const { GoogleGenAI } = require('@google/genai');
+  genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} catch (e) {
+  console.warn('GEMINI_API_KEY not set. AI interview feature will be unavailable.');
+}
+
+const allCases = require('../cases/index');
+
 const router = express.Router();
 
 function getPatientForUser(mr, userId) {
@@ -638,6 +648,288 @@ router.put('/:mr/problems/:id/status', requireAuth, (req, res) => {
   dbRun('UPDATE problems SET status = ?, annotation = ? WHERE id = ? AND patient_mr = ?', [status, annotation || '', req.params.id, req.params.mr]);
   const updated = dbGet('SELECT * FROM problems WHERE id = ?', [req.params.id]);
   res.json(updated);
+});
+
+// Generate a random case and create a NEW patient with it
+router.post('/generate-case', requireAuth, (req, res) => {
+  getDb();
+  const userId = req.session.userId;
+  const specialty = req.body.specialty || 'any';
+
+  const filteredCases = specialty === 'any'
+    ? allCases
+    : allCases.filter(c => c.specialty === specialty);
+
+  if (!filteredCases.length) {
+    return res.status(404).json({ error: 'No cases found for specialty: ' + specialty });
+  }
+
+  const caseData = filteredCases[Math.floor(Math.random() * filteredCases.length)];
+  const p = caseData.patient;
+  const isShared = 1;
+
+  // Generate MR number and ensure it's unique
+  let mr = 'MR-' + String(Math.floor(Math.random() * 90000) + 10000);
+  let existing = dbGet('SELECT id FROM patients WHERE mr = ?', [mr]);
+  while (existing) {
+    mr = 'MR-' + String(Math.floor(Math.random() * 90000) + 10000);
+    existing = dbGet('SELECT id FROM patients WHERE mr = ?', [mr]);
+  }
+
+  // Create the patient
+  const displayName = req.session.displayName || req.session.username;
+  dbRun(
+    `INSERT INTO patients (user_id, name, dob, sex, mr, cc, appt, sched, status, age, phone, ins, allergy, bp, hr, temp, wt, is_shared)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, p.name, p.dob, p.sex, mr, p.cc, 'TBD', displayName, p.age, p.phone || '—', p.ins || '—', p.allergy || 'None', p.bp || '—', p.hr || '—', p.temp || '—', p.wt || '—', isShared]
+  );
+
+  try {
+    // 1. nursing_notes
+    if (caseData.nursingNote) {
+      const nn = caseData.nursingNote;
+      dbRun(
+        'INSERT INTO nursing_notes (patient_mr, user_id, nurse_name, time, blood_pressure, heart_rate, temperature, weight, note, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [mr, userId, nn.nurseName || '', nn.time || '', nn.bloodPressure || '', nn.heartRate || '', nn.temperature || '', nn.weight || '', nn.note || '', isShared]
+      );
+    }
+
+    // 2. physician_notes — previousEncounters
+    if (caseData.previousEncounters) {
+      for (const enc of caseData.previousEncounters) {
+        dbRun(
+          'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, plan, visit_type, visit_date, nursing_notes, medical_decision_making, is_shared, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, enc.chiefComplaint || '', enc.hpi || '', enc.pmh || '', enc.surgicalHistory || '', enc.hospitalizations || '', enc.healthMaintenance || '', enc.familyHistory || '', enc.socialHistory || '', enc.reviewOfSystems || '', enc.physicalExam || '', enc.assessment || '', enc.plan || '', enc.type || 'office_visit', enc.visitDate || '', '', '', isShared, 'System']
+        );
+      }
+    }
+
+    // 3. physician_notes — currentEncounter
+    if (caseData.currentEncounter) {
+      const ce = caseData.currentEncounter;
+      dbRun(
+        'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, plan, visit_type, visit_date, nursing_notes, medical_decision_making, is_shared, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [mr, userId, ce.chiefComplaint || '', ce.hpi || '', ce.pmh || '', ce.surgicalHistory || '', ce.hospitalizations || '', ce.healthMaintenance || '', ce.familyHistory || '', ce.socialHistory || '', ce.reviewOfSystems || '', ce.physicalExam || '', ce.assessment || '', ce.plan || '', ce.visitType || 'office_visit', '', '', ce.mdm || '', isShared, 'System']
+      );
+    }
+
+    // 4. medications
+    if (caseData.medications) {
+      for (const med of caseData.medications) {
+        dbRun(
+          'INSERT INTO medications (patient_mr, user_id, name, dose, freq, route, start, prescriber, type, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, med.name, med.dose || '', med.freq || '', med.route || '', med.start || '', med.prescriber || '', med.type || 'existing', isShared]
+        );
+      }
+    }
+
+    // 5. allergies
+    if (caseData.allergies) {
+      for (const al of caseData.allergies) {
+        dbRun(
+          'INSERT INTO allergies (patient_mr, user_id, allergen, type, reaction, first_encounter, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, al.allergen, al.type, al.reaction || '', al.firstEncounter || '', isShared]
+        );
+      }
+    }
+
+    // 6. problems
+    if (caseData.problems) {
+      for (const prob of caseData.problems) {
+        dbRun(
+          'INSERT INTO problems (patient_mr, user_id, name, category, status, annotation, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, prob.name, prob.category || 'Other', prob.status || 'active', prob.annotation || '', isShared]
+        );
+      }
+    }
+
+    // 7. orders (for labs and imaging)
+    if (caseData.orders) {
+      for (const order of caseData.orders) {
+        dbRun(
+          'INSERT INTO orders (patient_mr, user_id, type, category, name, priority, status, notes, ordered_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, order.type, order.category || '', order.name, order.priority || 'Routine', order.status || 'Pending', order.notes || '', 'System', isShared]
+        );
+      }
+    }
+
+    // 8. consultations
+    if (caseData.consultations) {
+      for (const cons of caseData.consultations) {
+        dbRun(
+          'INSERT INTO consultations (patient_mr, user_id, specialty, requested_date, status, consultant, summary, requested_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, cons.specialty, cons.requestedDate || null, cons.status || 'Pending', cons.consultant || '', cons.summary || '', 'System', isShared]
+        );
+      }
+    }
+
+    // 9. studies
+    if (caseData.studies) {
+      for (const study of caseData.studies) {
+        dbRun(
+          'INSERT INTO studies (patient_mr, user_id, name, study_date, result, status, ordered_by, notes, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [mr, userId, study.name, study.studyDate || null, study.result || '', study.status || 'Pending', 'System', study.notes || '', isShared]
+        );
+      }
+    }
+
+    res.json({ success: true, caseId: caseData.id });
+  } catch (err) {
+    console.error('Error generating case:', err);
+    res.status(500).json({ error: 'Failed to generate case', details: err.message });
+  }
+});
+
+// AI patient interview endpoint
+router.post('/:mr/interview', requireAuth, async (req, res) => {
+  const mr = req.params.mr;
+  const userId = req.session.userId;
+
+  if (!genAI || !process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY not configured. Get a free key at https://aistudio.google.com/apikey' });
+  }
+
+  // Get patient data
+  getDb();
+  const patient = dbGet('SELECT * FROM patients WHERE mr = ? AND (user_id = ? OR is_shared = 1)', [mr, userId]);
+  if (!patient) {
+    return res.status(404).json({ error: 'Patient not found' });
+  }
+
+  // Get current encounter physician note (most recent)
+  const currentNote = dbGet(
+    'SELECT * FROM physician_notes WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC LIMIT 1',
+    [mr, userId]
+  );
+  if (!currentNote) {
+    return res.status(400).json({ error: 'No case data found. Generate a case first.' });
+  }
+
+  // Get medications
+  const meds = dbAll('SELECT name FROM medications WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1)', [mr, userId]);
+  const medList = meds.map(m => m.name).join(', ');
+
+  // Get problems for medical history
+  const problems = dbAll('SELECT name FROM problems WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1)', [mr, userId]);
+  const problemList = problems.map(p => p.name).join(', ');
+
+  // Get social history and family history from current encounter note
+  const socialHistory = currentNote.social_history || '';
+  const familyHistory = currentNote.family_history || '';
+  const ros = currentNote.review_of_systems || '';
+  const physicalExam = currentNote.physical_exam || '';
+
+  // Build system prompt
+  const systemPrompt = `You are playing the role of a patient in a clinical interview. The user is a medical student interviewing you.
+
+RULES:
+1. Answer in first person as the patient — not as a doctor. Use natural, patient-like language.
+2. Reveal information ONLY when directly asked. Do not volunteer details unprompted.
+3. Keep responses short — 2-4 sentences max.
+4. If asked something broad, give only a brief initial answer. Let the student dig deeper.
+5. Stay in character at all times. Never break the roleplay.
+6. Do not use medical terminology — speak like a regular person.
+
+PATIENT PROFILE (this is your information):
+- Name: ${patient.name}
+- Age: ${patient.age || 'N/A'}
+- Chief complaint: ${currentNote.chief_complaint || ''}
+- HPI details: ${currentNote.history_present_illness || ''}
+- Medical history: ${problemList || 'None'}
+- Medications: ${medList || 'None'}
+- Social history: ${socialHistory}
+- Family history: ${familyHistory}
+- Review of systems: ${ros}
+- Physical exam findings: ${physicalExam}
+
+Remember: reveal information ONLY when asked. Be natural and conversational.`;
+
+  const { message, chatHistory } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  const contents = [
+    { role: 'user', parts: [{ text: systemPrompt }] },
+    ...(chatHistory || []).map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    })),
+    { role: 'user', parts: [{ text: message }] }
+  ];
+
+  try {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    let fullReply = '';
+    let chunkCount = 0;
+    const stream = await genAI.models.generateContentStream({
+      model: 'gemini-3.5-flash',
+      contents,
+      config: {
+        temperature: 0.8,
+        maxOutputTokens: 512,
+      },
+    });
+
+    for await (const chunk of stream) {
+      chunkCount++;
+      const text = chunk?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (text) {
+        fullReply += text;
+        res.write(`data: ${JSON.stringify({ delta: text })}\n\n`);
+      }
+    }
+    console.log(`Streaming chunks: ${chunkCount}, total text length: ${fullReply.length}`);
+
+    res.write(`data: ${JSON.stringify({ done: true, reply: fullReply })}\n\n`);
+    res.end();
+  } catch (err) {
+    res.write(`data: ${JSON.stringify({ error: err.message || 'AI service error' })}\n\n`);
+    res.end();
+    console.error('Gemini API error:', err?.status, err?.message, err?.details);
+  }
+});
+
+// Save interview chat history for a patient
+router.post('/:mr/interview-history', requireAuth, (req, res) => {
+  getDb();
+  const { mr } = req.params;
+  const { chatHistory } = req.body;
+  const userId = req.session.userId;
+
+  if (!chatHistory || !Array.isArray(chatHistory)) {
+    return res.status(400).json({ error: 'Invalid chat history' });
+  }
+
+  // Check if record exists
+  const existing = dbGet('SELECT id FROM interview_history WHERE patient_mr = ? AND user_id = ?', [mr, userId]);
+
+  if (existing) {
+    dbRun('UPDATE interview_history SET chat_data = ?, updated_at = datetime(\'now\') WHERE patient_mr = ? AND user_id = ?', [JSON.stringify(chatHistory), mr, userId]);
+  } else {
+    dbRun('INSERT INTO interview_history (patient_mr, user_id, chat_data, updated_at) VALUES (?, ?, ?, datetime(\'now\'))', [mr, userId, JSON.stringify(chatHistory)]);
+  }
+
+  res.json({ success: true });
+});
+
+// Load interview chat history for a patient
+router.get('/:mr/interview-history', requireAuth, (req, res) => {
+  getDb();
+  const { mr } = req.params;
+  const userId = req.session.userId;
+
+  const record = dbGet('SELECT chat_data FROM interview_history WHERE patient_mr = ? AND user_id = ?', [mr, userId]);
+
+  if (record) {
+    res.json({ chatHistory: JSON.parse(record.chat_data) });
+  } else {
+    res.json({ chatHistory: [] });
+  }
 });
 
 module.exports = router;
