@@ -352,7 +352,31 @@ router.delete('/:mr', requireAdmin, (req, res) => {
   dbRun('DELETE FROM imaging WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM allergies WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patient_locks WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM interview_history WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patients WHERE mr = ? AND user_id = ?', [mr, req.session.userId]);
+  res.json({ success: true });
+});
+
+router.delete('/:mr/generate-only', requireAuth, (req, res) => {
+  const mr = req.params.mr;
+  const patient = dbGet('SELECT * FROM patients WHERE mr = ? AND user_id = ? AND is_generated = 1', [mr, req.session.userId]);
+  if (!patient) {
+    return res.status(403).json({ error: 'Can only delete AI-generated cases. Seed/demo patients cannot be deleted.' });
+  }
+
+  dbRun('DELETE FROM medications WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM orders WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM problems WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM consultations WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM studies WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM physician_notes WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM nursing_notes WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM imaging WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM allergies WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM patient_locks WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM interview_history WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM patients WHERE mr = ? AND user_id = ?', [mr, req.session.userId]);
+  console.log(`[delete-case] User ${req.session.userId} deleted generated case ${mr}`);
   res.json({ success: true });
 });
 
@@ -661,6 +685,7 @@ router.post('/generate-case', requireAuth, (req, res) => {
     : allCases.filter(c => c.specialty === specialty);
 
   if (!filteredCases.length) {
+    console.log(`[generate-case] No cases found for specialty: ${specialty}. Total loaded: ${allCases.length}, Specialties: ${[...new Set(allCases.map(c => c.specialty))].join(', ')}`);
     return res.status(404).json({ error: 'No cases found for specialty: ' + specialty });
   }
 
@@ -676,11 +701,13 @@ router.post('/generate-case', requireAuth, (req, res) => {
     existing = dbGet('SELECT id FROM patients WHERE mr = ?', [mr]);
   }
 
-  // Create the patient
+  console.log(`[generate-case] Generating case: ${caseData.id} (${caseData.specialty}) for ${p.name}, MR=${mr}, userId=${userId}`);
+
+  // Create the patient (is_generated=1 so it can be deleted by non-admin users)
   const displayName = req.session.displayName || req.session.username;
   dbRun(
-    `INSERT INTO patients (user_id, name, dob, sex, mr, cc, appt, sched, status, age, phone, ins, allergy, bp, hr, temp, wt, is_shared)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO patients (user_id, name, dob, sex, mr, cc, appt, sched, status, age, phone, ins, allergy, bp, hr, temp, wt, is_shared, is_generated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [userId, p.name, p.dob, p.sex, mr, p.cc, 'TBD', displayName, p.age, p.phone || '—', p.ins || '—', p.allergy || 'None', p.bp || '—', p.hr || '—', p.temp || '—', p.wt || '—', isShared]
   );
 

@@ -477,7 +477,7 @@
     <button class="btn-tab" id="addendumBtn" onclick="openAddendumModal()" style="opacity:0.4;pointer-events:none;"><i class="ti ti-file-plus"></i> Add Addendum</button>
     <button class="btn-tab active-tab" id="noteTabBtn" onclick="setSection('note')"><i class="ti ti-file-text"></i> Note</button>
       <button class="btn-tab" id="interviewBtn" onclick="openInterviewModal()" style="color:#7c3aed;"><i class="ti ti-message-circle"></i> Interview</button>
-        <button class="btn-tab" onclick="confirmDeletePatient()" style="color:var(--red);"><i class="ti ti-trash"></i> Delete Patient</button>
+        <button class="btn-tab" id="deletePatientBtn" onclick="confirmDeletePatient()" style="color:var(--red);"><i class="ti ti-trash"></i> Delete Patient</button>
     <span style="margin-left:auto; color:rgba(255,255,255,0.85); font-size:11px;" id="patientBadge"></span>
   </div>
 
@@ -1083,10 +1083,18 @@ async function addPatient() {
 
 async function confirmDeletePatient() {
   if (!currentPatient) return;
+  if (currentUserRole !== 'admin' && !currentPatient.is_generated) {
+    alert('Cannot delete seed/demo patients. Only AI-generated cases can be deleted by non-admin users.');
+    return;
+  }
   const patientName = currentPatient.name || 'this patient';
   if (confirm(`Are you sure you want to delete ${patientName}? This action cannot be undone.`)) {
     try {
-      await api('DELETE', '/api/patients/' + currentPatient.mr);
+      if (currentUserRole === 'admin') {
+        await api('DELETE', '/api/patients/' + currentPatient.mr);
+      } else {
+        await api('DELETE', '/api/patients/' + currentPatient.mr + '/generate-only');
+      }
       alert('Patient deleted successfully.');
       goSchedule();
     } catch (e) {
@@ -1220,7 +1228,7 @@ async function openPatient(i) {
   updateAddendumBtn();
 
   document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
-  document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr;
+  document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr + (p.is_generated ? ' · [AI-Generated]' : ' · [Demo]');
 
   document.getElementById('patInfo').innerHTML = `
     <div class="info-row"><span class="info-label">Full Name</span><span class="info-value">${p.name}</span></div>
@@ -1876,6 +1884,23 @@ function updateAddendumBtn() {
   }
 }
 
+function updateDeleteBtn() {
+  const btn = document.getElementById('deletePatientBtn');
+  if (currentUserRole === 'admin') {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    btn.title = '';
+  } else if (!currentPatient || !currentPatient.is_generated) {
+    btn.style.opacity = '0.4';
+    btn.style.pointerEvents = 'none';
+    btn.title = 'Cannot delete seed/demo patients';
+  } else {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    btn.title = '';
+  }
+}
+
 function buildReportContent(doc, p) {
   let y = 20;
   const lineHeight = 7;
@@ -2123,7 +2148,8 @@ async function generateReport() {
 
     // Enable addendum button
     addendumEnabled = true;
-    updateAddendumBtn();
+ updateAddendumBtn();
+  updateDeleteBtn();
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Error generating PDF: ' + error.message);

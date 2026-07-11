@@ -79,6 +79,12 @@ app.get('/public/emr.html', requireAuth, (req, res) => {
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`EMR Simulator running on http://localhost:${PORT}`);
+    try {
+      const cases = require('./cases/index');
+      console.log(`[startup] Loaded ${cases.length} AI cases. Specialties: ${[...new Set(cases.map(c => c.specialty))].join(', ')}`);
+    } catch (e) {
+      console.error('[startup] ERROR loading cases:', e.message);
+    }
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

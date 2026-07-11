@@ -388,6 +388,9 @@ function initSchema() {
   try {
     db.run('ALTER TABLE patients ADD COLUMN profile_pic TEXT');
   } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN is_generated INTEGER DEFAULT 0');
+  } catch (e) {}
 }
 
 function seedData() {
