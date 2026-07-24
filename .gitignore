@@ -4,3 +4,4 @@ node_modules/
 *.sqlite
 opencode.json
 .agents/
+emr_old.html
