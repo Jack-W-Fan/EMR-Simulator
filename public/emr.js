@@ -643,6 +643,119 @@ function updatePatientInfo() {
   `;
 }
 
+// ── EDIT PATIENT / ENCOUNTER INFO ──
+function toggleEditPatient() {
+  if (!currentPatient) return;
+  const p = currentPatient;
+  const body = document.getElementById('patInfo').parentElement;
+  body.classList.add('editing');
+  document.getElementById('patInfo').insertAdjacentHTML('afterend', `
+    <div class="edit-form" id="patientEditForm">
+      <div class="edit-row"><label>Full Name</label><input type="text" id="editName" value="${p.name||''}" /></div>
+      <div class="edit-row"><label>Date of Birth</label><input type="text" id="editDob" value="${p.dob||''}" /></div>
+      <div class="edit-row"><label>Sex</label>
+        <select id="editSex"><option value="M" ${p.sex==='M'?'selected':''}>Male</option><option value="F" ${p.sex==='F'?'selected':''}>Female</option><option value="O" ${p.sex==='O'?'selected':''}>Other</option></select>
+      </div>
+      <div class="edit-row"><label>Phone</label><input type="text" id="editPhone" value="${p.phone||''}" /></div>
+      <div class="edit-row"><label>Insurance</label><input type="text" id="editIns" value="${p.ins||''}" /></div>
+      <div class="edit-actions">
+        <button class="btn btn-outline" onclick="cancelEdit('patient')">Cancel</button>
+        <button class="btn btn-blue" onclick="savePatientEdit()"><i class="ti ti-check"></i> Save</button>
+      </div>
+    </div>`);
+}
+
+async function savePatientEdit() {
+  if (!currentPatient) return;
+  const data = {
+    name: document.getElementById('editName').value,
+    dob: document.getElementById('editDob').value,
+    sex: document.getElementById('editSex').value,
+    phone: document.getElementById('editPhone').value,
+    ins: document.getElementById('editIns').value,
+  };
+  try {
+    const updated = await api('PUT', `/api/patients/${currentPatient.mr}`, data);
+    Object.assign(currentPatient, updated);
+    const idx = patients.findIndex(p => p.mr === currentPatient.mr);
+    if (idx >= 0) Object.assign(patients[idx], updated);
+    document.getElementById('patientBadge').textContent = currentPatient.name + ' · ' + currentPatient.mr + (currentPatient.is_generated ? ' · [AI-Generated]' : ' · [Demo]');
+    cancelEdit('patient');
+  } catch (e) {
+    alert('Error saving: ' + e.message);
+  }
+}
+
+function toggleEditEncounter() {
+  if (!currentPatient) return;
+  const p = currentPatient;
+  const body = document.getElementById('encInfo');
+  body.classList.add('editing');
+  document.getElementById('encInfo').insertAdjacentHTML('beforeend', `
+    <div class="edit-form" id="encounterEditForm">
+      <div class="edit-row"><label>Appt Time</label><input type="text" id="editAppt" value="${p.appt||''}" /></div>
+      <div class="edit-row"><label>Physician</label><input type="text" id="editSched" value="${p.sched||''}" /></div>
+      <div class="edit-row"><label>Chief Complaint</label><input type="text" id="editCc" value="${p.cc||''}" /></div>
+      <div class="edit-row"><label>Blood Pressure</label><input type="text" id="editBp" value="${p.bp||''}" /></div>
+      <div class="edit-row"><label>Heart Rate</label><input type="text" id="editHr" value="${p.hr||''}" /></div>
+      <div class="edit-row"><label>Temperature</label><input type="text" id="editTemp" value="${p.temp||''}" /></div>
+      <div class="edit-row"><label>Weight</label><input type="text" id="editWt" value="${p.wt||''}" /></div>
+      <div class="edit-actions">
+        <button class="btn btn-outline" onclick="cancelEdit('encounter')">Cancel</button>
+        <button class="btn btn-blue" onclick="saveEncounterEdit()"><i class="ti ti-check"></i> Save</button>
+      </div>
+    </div>`);
+}
+
+async function saveEncounterEdit() {
+  if (!currentPatient) return;
+  const data = {
+    appt: document.getElementById('editAppt').value,
+    sched: document.getElementById('editSched').value,
+    cc: document.getElementById('editCc').value,
+    bp: document.getElementById('editBp').value,
+    hr: document.getElementById('editHr').value,
+    temp: document.getElementById('editTemp').value,
+    wt: document.getElementById('editWt').value,
+  };
+  try {
+    const updated = await api('PUT', `/api/patients/${currentPatient.mr}`, data);
+    Object.assign(currentPatient, updated);
+    const idx = patients.findIndex(p => p.mr === currentPatient.mr);
+    if (idx >= 0) Object.assign(patients[idx], updated);
+    cancelEdit('encounter');
+  } catch (e) {
+    alert('Error saving: ' + e.message);
+  }
+}
+
+function cancelEdit(type) {
+  if (!currentPatient) return;
+  const p = currentPatient;
+  if (type === 'patient') {
+    const body = document.getElementById('patInfo').parentElement;
+    body.classList.remove('editing');
+    const form = document.getElementById('patientEditForm');
+    if (form) form.remove();
+    updatePatientInfo();
+  } else {
+    const body = document.getElementById('encInfo');
+    body.classList.remove('editing');
+    const form = document.getElementById('encounterEditForm');
+    if (form) form.remove();
+    document.getElementById('encInfo').innerHTML = `
+      <div class="info-row"><span class="info-label">Appt Date</span><span class="info-value">${new Date().toLocaleDateString()}</span></div>
+      <div class="info-row"><span class="info-label">Appt Time</span><span class="info-value">${p.appt}</span></div>
+      <div class="info-row"><span class="info-label">Physician</span><span class="info-value">${p.sched}</span></div>
+      <div class="info-row"><span class="info-label">Chief Complaint</span><span class="info-value">${p.cc}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="badge ${STATUS[p.status].badgeClass}" style="cursor:pointer" onclick="showPatientStatusDropdownInPatient(event)"><span class="badge-dot ${STATUS[p.status].dotClass}"></span>${STATUS[p.status].label}</span></span></div>
+      <div class="info-row"><span class="info-label">Blood Pressure</span><span class="info-value">${p.bp||'—'}</span></div>
+      <div class="info-row"><span class="info-label">Heart Rate</span><span class="info-value">${p.hr?p.hr+' bpm':'—'}</span></div>
+      <div class="info-row"><span class="info-label">Temperature</span><span class="info-value">${p.temp||'—'}</span></div>
+      <div class="info-row"><span class="info-label">Weight</span><span class="info-value">${p.wt||'—'}</span></div>`;
+  }
+}
+
 // ── SECTION SWITCHING ──
 function setSection(sec) {
   currentSection = sec;
@@ -854,7 +967,7 @@ function renderSection(sec) {
           <table class="med-table">
             <thead><tr><th>Type</th><th>Category</th><th>Name</th><th>Priority</th><th>Status</th><th>Order Date</th><th style="width:50px"></th></tr></thead>
             <tbody>${filteredOrders.map(o=>`<tr>
-              <td><span class="badge ${o.type==='labs'?'complete':o.type==='imaging'?'ready':'waiting'}"><span class="badge-dot ${o.type==='labs'?'dot-complete':o.type==='imaging'?'dot-ready':'dot-waiting'}"></span>${o.type||'—'}</span></td>
+              <td><span class="badge ${o.type==='labs'?'complete':o.type==='imaging'?'ready':'waiting'}"><span class="badge-dot ${o.type==='labs'?'dot-complete':o.type==='imaging'?'dot-ready':'dot-waiting'}"></span>${o.type ? o.type.charAt(0).toUpperCase() + o.type.slice(1) : '—'}</span></td>
               <td>${o.category||'—'}</td>
               <td style="font-weight:600">${o.name}</td>
               <td>${o.priority||'—'}</td>
@@ -1008,10 +1121,25 @@ function renderSection(sec) {
   }
 
   else if (sec === 'problems') {
+    const addedNames = currentProblems.map(p => p.name);
+    const optionsHtml = Object.entries(PROBLEM_CATEGORIES).map(([cat, items]) =>
+      `<optgroup label="${cat}">${items.map(item =>
+        `<option value="${item}" ${addedNames.includes(item) ? 'disabled' : ''}>${item}</option>`
+      ).join('')}</optgroup>`
+    ).join('');
+
     el.innerHTML = `
       <div class="info-card">
-        <div class="info-card-header"><i class="ti ti-list-check"></i> Problems</div>
-        <div class="info-card-body" style="padding:0">
+        <div class="info-card-header"><i class="ti ti-list-check"></i> Problem List</div>
+        <div class="info-card-body">
+          <div class="problem-add-row">
+            <div class="field">
+              <label>Select Problem</label>
+              <select id="problemSelect" onchange="toggleCustomInput('problemSelect', 'problemNameCustom')"><option value="">— Choose a problem —</option>${optionsHtml}<option value="other">Other (specify below)</option></select>
+            </div>
+            <button class="btn btn-blue" onclick="addProblem()"><i class="ti ti-plus"></i> Add Problem</button>
+          </div>
+          <div class="field" id="problemNameCustomField" style="display:none;margin-bottom:16px;"><label>Custom Problem Name</label><input type="text" id="problemNameCustom" placeholder="Enter custom problem name" /></div>
           ${currentProblems.length ? `
           <table class="med-table">
             <thead><tr><th>Problem</th><th>Category</th><th>Status</th><th>Annotation</th><th style="width:60px">Remove</th></tr></thead>

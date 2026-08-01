@@ -269,6 +269,24 @@ td { padding: 9px 10px; color: var(--text-main); font-size: 12px; overflow: hidd
   display: flex; align-items: center; gap: 8px;
   text-transform: uppercase; letter-spacing: 0.4px;
 }
+.header-edit-btn {
+  margin-left: auto; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  color: white; border-radius: 4px; padding: 3px 8px; cursor: pointer;
+  font-size: 11px; display: flex; align-items: center; gap: 4px; transition: background 0.2s;
+}
+.header-edit-btn:hover { background: rgba(255,255,255,0.3); }
+.info-card-body.editing .info-row { display: none; }
+.edit-form { display: flex; flex-direction: column; gap: 10px; }
+.edit-form .edit-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.edit-form .edit-row label { color: var(--text-muted); width: 110px; flex-shrink: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+.edit-form .edit-row input, .edit-form .edit-row select {
+  flex: 1; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12px; font-family: inherit; background: var(--white);
+}
+.edit-form .edit-row input:focus, .edit-form .edit-row select:focus {
+  outline: none; border-color: var(--blue-mid);
+}
+.edit-form .edit-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
 .info-card-body { padding: 14px; }
 .info-row { display: flex; margin-bottom: 8px; font-size: 12px; }
 .info-row:last-child { margin-bottom: 0; }

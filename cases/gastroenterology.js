@@ -65,9 +65,9 @@ module.exports = [
       { name: "Pantoprazole", dose: "40mg", freq: "Daily", route: "PO", prescriber: "Dr. Adams", start: "2023-08-20", type: "existing" }
     ],
     problems: [
-      { name: "Peptic Ulcer Disease", category: "gastrointestinal", status: "active", annotation: "Recurrent, NSAID-induced" },
-      { name: "Upper GI Bleed", category: "gastrointestinal", status: "active", annotation: "Acute, hemodynamically unstable" },
-      { name: "Hypertension", category: "cardiovascular", status: "active", annotation: "Newly diagnosed 2022" }
+      { name: "Peptic Ulcer Disease", category: "Gastrointestinal", status: "active", annotation: "Recurrent, NSAID-induced" },
+      { name: "Upper GI Bleed", category: "Gastrointestinal", status: "active", annotation: "Acute, hemodynamically unstable" },
+      { name: "Hypertension", category: "Cardiovascular", status: "active", annotation: "Newly diagnosed 2022" }
     ],
     orders: [
       { type: "labs", category: "Hematologic", name: "CBC", priority: "STAT", status: "Pending", notes: "" },
@@ -144,8 +144,8 @@ module.exports = [
       { name: "Acetaminophen", dose: "1000mg", freq: "Q6H PRN", route: "PO", prescriber: "Dr. Adams", start: "2024-04-22", type: "existing" }
     ],
     problems: [
-      { name: "Cholelithiasis", category: "gastrointestinal", status: "active", annotation: "" },
-      { name: "Acute Cholecystitis", category: "gastrointestinal", status: "active", annotation: "Suspected, pending imaging" }
+      { name: "Cholelithiasis", category: "Gastrointestinal", status: "active", annotation: "" },
+      { name: "Acute Cholecystitis", category: "Gastrointestinal", status: "active", annotation: "Suspected, pending imaging" }
     ],
     orders: [
       { type: "labs", category: "Hematologic", name: "CBC", priority: "Urgent", status: "Pending", notes: "" },

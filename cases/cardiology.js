@@ -66,9 +66,9 @@ module.exports = [
       { name: "Aspirin", dose: "81mg", freq: "Daily", route: "PO", prescriber: "Dr. Adams", start: "2020-01-15", type: "existing" }
     ],
     problems: [
-      { name: "Hypertension", category: "cardiovascular", status: "active", annotation: "Well controlled on lisinopril, currently elevated" },
-      { name: "Hyperlipidemia", category: "metabolic", status: "active", annotation: "" },
-      { name: "Congestive Heart Failure", category: "cardiovascular", status: "active", annotation: "Prior exacerbation 2019, currently decompensating" }
+      { name: "Hypertension", category: "Cardiovascular", status: "active", annotation: "Well controlled on lisinopril, currently elevated" },
+      { name: "Hyperlipidemia", category: "Metabolic", status: "active", annotation: "" },
+      { name: "Congestive Heart Failure", category: "Cardiovascular", status: "active", annotation: "Prior exacerbation 2019, currently decompensating" }
     ],
     orders: [
       { type: "labs", category: "Blood Plasma/Serum", name: "BNP", priority: "Urgent", status: "Pending", notes: "Evaluate for CHF" },
@@ -153,10 +153,10 @@ module.exports = [
       { name: "Nitroglycerin SL", dose: "0.4mg", freq: "PRN", route: "SL", prescriber: "Dr. Adams", start: "2018-06-15", type: "existing" }
     ],
     problems: [
-      { name: "Coronary Artery Disease", category: "cardiovascular", status: "active", annotation: "s/p LAD stent 2018" },
-      { name: "Hypertension", category: "cardiovascular", status: "active", annotation: "" },
-      { name: "Diabetes Mellitus Type 2", category: "metabolic", status: "active", annotation: "Well controlled" },
-      { name: "Hyperlipidemia", category: "metabolic", status: "active", annotation: "" }
+      { name: "Coronary Artery Disease", category: "Cardiovascular", status: "active", annotation: "s/p LAD stent 2018" },
+      { name: "Hypertension", category: "Cardiovascular", status: "active", annotation: "" },
+      { name: "Diabetes Mellitus Type 2", category: "Metabolic", status: "active", annotation: "Well controlled" },
+      { name: "Hyperlipidemia", category: "Metabolic", status: "active", annotation: "" }
     ],
     orders: [
       { type: "labs", category: "Blood Plasma/Serum", name: "Troponin I", priority: "STAT", status: "Pending", notes: "x2 — 0 and 2 hour" },

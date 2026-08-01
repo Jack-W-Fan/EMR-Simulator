@@ -119,7 +119,7 @@
     <div class="patient-layout" style="margin-bottom:14px;">
       <div class="patient-col" style="max-width:320px;">
         <div class="info-card">
-          <div class="info-card-header"><i class="ti ti-user"></i> Patient's Information</div>
+          <div class="info-card-header"><i class="ti ti-user"></i> Patient's Information <button class="header-edit-btn" onclick="toggleEditPatient()" title="Edit Patient Info"><i class="ti ti-pencil"></i></button></div>
           <div class="info-card-body">
             <div class="patient-photo" id="patientPhoto" onclick="handlePhotoClick()"><i class="ti ti-user"></i></div>
             <input type="file" id="profilePicInput" accept="image/*" style="display:none" />
@@ -129,7 +129,7 @@
       </div>
       <div class="patient-col">
         <div class="info-card">
-          <div class="info-card-header"><i class="ti ti-clipboard-list"></i> Encounter's Information</div>
+          <div class="info-card-header"><i class="ti ti-clipboard-list"></i> Encounter's Information <button class="header-edit-btn" onclick="toggleEditEncounter()" title="Edit Encounter Info"><i class="ti ti-pencil"></i></button></div>
           <div class="info-card-body" id="encInfo"></div>
         </div>
       </div>

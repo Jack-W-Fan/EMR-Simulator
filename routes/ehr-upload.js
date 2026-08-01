@@ -141,7 +141,7 @@ router.post('/upload', requireAdmin, async (req, res) => {
               dbRun(
                 `INSERT INTO orders (patient_mr, user_id, type, name, status, ordered_by, is_shared, result, result_unlocked)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [patientData.mr, req.session.userId, 'Lab', lab, 'Completed', req.session.displayName || 'System', isShared, '', 0]
+                [patientData.mr, req.session.userId, 'labs', lab, 'Completed', req.session.displayName || 'System', isShared, '', 0]
               );
             }
           }

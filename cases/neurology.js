@@ -65,10 +65,10 @@ module.exports = [
       { name: "Amlodipine", dose: "5mg", freq: "Daily", route: "PO", prescriber: "Dr. Adams", start: "2024-04-15", type: "existing" }
     ],
     problems: [
-      { name: "Hypertension", category: "cardiovascular", status: "active", annotation: "Poorly controlled" },
-      { name: "Obesity", category: "metabolic", status: "active", annotation: "BMI 30" },
-      { name: "Acute Ischemic Stroke", category: "neurologic", status: "active", annotation: "Right MCA territory, today" },
-      { name: "Atrial Fibrillation", category: "cardiovascular", status: "active", annotation: "Newly discovered" }
+      { name: "Hypertension", category: "Cardiovascular", status: "active", annotation: "Poorly controlled" },
+      { name: "Obesity", category: "Metabolic", status: "active", annotation: "BMI 30" },
+      { name: "Acute Ischemic Stroke", category: "Neurologic", status: "active", annotation: "Right MCA territory, today" },
+      { name: "Atrial Fibrillation", category: "Cardiovascular", status: "active", annotation: "Newly discovered" }
     ],
     orders: [
       { type: "labs", category: "Hematologic", name: "CBC", priority: "STAT", status: "Pending", notes: "" },
@@ -151,10 +151,10 @@ module.exports = [
       { name: "Sumatriptan", dose: "50mg", freq: "PRN", route: "PO", prescriber: "Dr. Adams", start: "2024-06-20", type: "existing" }
     ],
     problems: [
-      { name: "Hypertension", category: "cardiovascular", status: "active", annotation: "" },
-      { name: "Hyperlipidemia", category: "metabolic", status: "active", annotation: "" },
-      { name: "New-onset Seizure", category: "neurologic", status: "active", annotation: "Suspected intracranial mass" },
-      { name: "Headaches", category: "neurologic", status: "active", annotation: "Worsening, likely secondary" }
+      { name: "Hypertension", category: "Cardiovascular", status: "active", annotation: "" },
+      { name: "Hyperlipidemia", category: "Metabolic", status: "active", annotation: "" },
+      { name: "New-onset Seizure", category: "Neurologic", status: "active", annotation: "Suspected intracranial mass" },
+      { name: "Headaches", category: "Neurologic", status: "active", annotation: "Worsening, likely secondary" }
     ],
     orders: [
       { type: "labs", category: "Hematologic", name: "CBC", priority: "Routine", status: "Pending", notes: "" },

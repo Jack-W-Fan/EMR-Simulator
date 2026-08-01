@@ -67,10 +67,10 @@ module.exports = [
       { name: "Atorvastatin", dose: "20mg", freq: "Daily", route: "PO", prescriber: "Dr. Adams", start: "2017-03-01", type: "existing" }
     ],
     problems: [
-      { name: "Type 2 Diabetes Mellitus", category: "endocrine", status: "active", annotation: "With DKA this admission" },
-      { name: "Hypertension", category: "cardiovascular", status: "active", annotation: "" },
-      { name: "Hyperlipidemia", category: "metabolic", status: "active", annotation: "" },
-      { name: "Urinary Tract Infection", category: "infectious", status: "active", annotation: "Precipitating factor for DKA" }
+      { name: "Type 2 Diabetes Mellitus", category: "Endocrine", status: "active", annotation: "With DKA this admission" },
+      { name: "Hypertension", category: "Cardiovascular", status: "active", annotation: "" },
+      { name: "Hyperlipidemia", category: "Metabolic", status: "active", annotation: "" },
+      { name: "Urinary Tract Infection", category: "Infectious", status: "active", annotation: "Precipitating factor for DKA" }
     ],
     orders: [
       { type: "labs", category: "Blood Plasma/Serum", name: "BMP", priority: "STAT", status: "Pending", notes: "Monitor glucose and electrolytes" },
@@ -151,9 +151,9 @@ module.exports = [
       { name: "Acetaminophen", dose: "500mg", freq: "BID PRN", route: "PO", prescriber: "Dr. Adams", start: "2022-06-10", type: "existing" }
     ],
     problems: [
-      { name: "Hypothyroidism", category: "endocrine", status: "active", annotation: "Likely Hashimoto's, new diagnosis" },
-      { name: "Osteoporosis", category: "musculoskeletal", status: "active", annotation: "T-score -2.8" },
-      { name: "Osteoarthritis", category: "musculoskeletal", status: "active", annotation: "Bilateral knees" }
+      { name: "Hypothyroidism", category: "Endocrine", status: "active", annotation: "Likely Hashimoto's, new diagnosis" },
+      { name: "Osteoporosis", category: "Musculoskeletal", status: "active", annotation: "T-score -2.8" },
+      { name: "Osteoarthritis", category: "Musculoskeletal", status: "active", annotation: "Bilateral knees" }
     ],
     orders: [
       { type: "labs", category: "Endocrine", name: "TSH", priority: "Routine", status: "Pending", notes: "" },

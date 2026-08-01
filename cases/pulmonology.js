@@ -67,9 +67,9 @@ module.exports = [
       { name: "Vitamin D3", dose: "2000 IU", freq: "Daily", route: "PO", prescriber: "Dr. Adams", start: "2024-03-18", type: "existing" }
     ],
     problems: [
-      { name: "COPD", category: "respiratory", status: "active", annotation: "GOLD stage II-III, continued smoker" },
-      { name: "Obesity", category: "metabolic", status: "active", annotation: "BMI 32" },
-      { name: "GERD", category: "gastrointestinal", status: "active", annotation: "Well controlled on omeprazole" }
+      { name: "COPD", category: "Respiratory", status: "active", annotation: "GOLD stage II-III, continued smoker" },
+      { name: "Obesity", category: "Metabolic", status: "active", annotation: "BMI 32" },
+      { name: "GERD", category: "Gastrointestinal", status: "active", annotation: "Well controlled on omeprazole" }
     ],
     orders: [
       { type: "imaging", category: "Radiology", name: "CXR", priority: "Urgent", status: "Pending", notes: "Rule out pneumonia" },
@@ -145,7 +145,7 @@ module.exports = [
       { name: "Norethindrone/Ethinyl Estradiol", dose: "1mg/20mcg", freq: "Daily", route: "PO", prescriber: "Dr. Adams", start: "2020-01-15", type: "existing" }
     ],
     problems: [
-      { name: "Pulmonary Embolism", category: "cardiovascular", status: "active", annotation: "Suspected, pending CT" }
+      { name: "Pulmonary Embolism", category: "Cardiovascular", status: "active", annotation: "Suspected, pending CT" }
     ],
     orders: [
       { type: "labs", category: "Blood Plasma/Serum", name: "D-Dimer", priority: "STAT", status: "Pending", notes: "" },
