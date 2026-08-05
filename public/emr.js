@@ -858,7 +858,7 @@ function renderSection(sec) {
             <thead><tr><th>Allergen</th><th>Type</th><th>Reaction</th><th>First Encountered</th><th style="width:50px"></th></tr></thead>
             <tbody>${allergies.map(a=>`<tr>
               <td style="font-weight:600">${a.allergen}</td>
-              <td>${a.type||'—'}</td>
+              <td>${a.type ? a.type.charAt(0).toUpperCase() + a.type.slice(1) : '—'}</td>
               <td>${a.reaction||'—'}</td>
               <td>${a.first_encounter||'—'}</td>
               <td><button class="remove-btn" onclick="deleteAllergy(${a.id})" title="Remove"><i class="ti ti-x"></i></button></td>
