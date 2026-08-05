@@ -270,6 +270,16 @@ function initSchema() {
   } catch (err) {
     console.error('Error checking/adding review_of_systems column:', err);
   }
+
+  // Add edited_at column for tracking note edits
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN edited_at TEXT');
+  } catch (e) {}
+
+  // Add differential_diagnosis column
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN differential_diagnosis TEXT');
+  } catch (e) {}
   db.run(`
     CREATE TABLE IF NOT EXISTS nursing_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -399,6 +409,18 @@ function initSchema() {
   } catch (e) {}
   try {
     db.run('ALTER TABLE patients ADD COLUMN is_generated INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN resp_rate TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN o2_sat TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN height TEXT');
+  } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN bmi TEXT');
   } catch (e) {}
 }
 

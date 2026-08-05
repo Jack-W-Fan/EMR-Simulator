@@ -16,6 +16,9 @@ let currentNursingNotes = [];
 let currentImaging = [];
 let currentAllergies = [];
 let currentOrderType = 'all';
+let noteFormOpen = false;
+let noteFormData = {};
+let editingNoteId = null;
 
 const PROBLEM_CATEGORIES = {
   'Cardiovascular':   ['Hypertension','Coronary Artery Disease','Heart Failure','Atrial Fibrillation','Hyperlipidemia','Peripheral Artery Disease','Deep Vein Thrombosis','Pulmonary Embolism','Aortic Stenosis','Dilated Cardiomyopathy','Hypertrophic Cardiomyopathy','Venous Insufficiency','Varicose Veins','Endocarditis','Rheumatic Heart Disease','Myocardial Infarction','Ventricular Tachycardia','Congestive Heart Failure','Pulmonary Hypertension','Cardiomyopathy'],
@@ -617,10 +620,14 @@ async function openPatient(i) {
     <div class="info-row"><span class="info-label">Physician</span><span class="info-value">${p.sched}</span></div>
     <div class="info-row"><span class="info-label">Chief Complaint</span><span class="info-value">${p.cc}</span></div>
     <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="badge ${STATUS[p.status].badgeClass}" style="cursor:pointer" onclick="showPatientStatusDropdownInPatient(event)"><span class="badge-dot ${STATUS[p.status].dotClass}"></span>${STATUS[p.status].label}</span></span></div>
-    <div class="info-row"><span class="info-label">Blood Pressure</span><span class="info-value">${p.bp||'—'}</span></div>
-    <div class="info-row"><span class="info-label">Heart Rate</span><span class="info-value">${p.hr?p.hr+' bpm':'—'}</span></div>
     <div class="info-row"><span class="info-label">Temperature</span><span class="info-value">${p.temp||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Blood Pressure</span><span class="info-value">${p.bp||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Pulse Rate</span><span class="info-value">${p.hr?p.hr+' bpm':'—'}</span></div>
+    <div class="info-row"><span class="info-label">Respiratory Rate</span><span class="info-value">${p.resp_rate?p.resp_rate+' breaths/min':'—'}</span></div>
+    <div class="info-row"><span class="info-label">O2 Saturation</span><span class="info-value">${p.o2_sat?p.o2_sat+'%':'—'}</span></div>
+    <div class="info-row"><span class="info-label">Height</span><span class="info-value">${p.height||'—'}</span></div>
     <div class="info-row"><span class="info-label">Weight</span><span class="info-value">${p.wt||'—'}</span></div>
+    <div class="info-row"><span class="info-label">BMI</span><span class="info-value">${p.bmi||'—'}</span></div>
   `;
 
   setSection('meds');
@@ -697,9 +704,13 @@ function toggleEditEncounter() {
       <div class="edit-row"><label>Physician</label><input type="text" id="editSched" value="${p.sched||''}" /></div>
       <div class="edit-row"><label>Chief Complaint</label><input type="text" id="editCc" value="${p.cc||''}" /></div>
       <div class="edit-row"><label>Blood Pressure</label><input type="text" id="editBp" value="${p.bp||''}" /></div>
-      <div class="edit-row"><label>Heart Rate</label><input type="text" id="editHr" value="${p.hr||''}" /></div>
+      <div class="edit-row"><label>Pulse Rate</label><input type="text" id="editHr" value="${p.hr||''}" /></div>
       <div class="edit-row"><label>Temperature</label><input type="text" id="editTemp" value="${p.temp||''}" /></div>
+      <div class="edit-row"><label>Respiratory Rate</label><input type="text" id="editRespRate" value="${p.resp_rate||''}" /></div>
+      <div class="edit-row"><label>O2 Saturation</label><input type="text" id="editO2Sat" value="${p.o2_sat||''}" /></div>
+      <div class="edit-row"><label>Height</label><input type="text" id="editHeight" value="${p.height||''}" /></div>
       <div class="edit-row"><label>Weight</label><input type="text" id="editWt" value="${p.wt||''}" /></div>
+      <div class="edit-row"><label>BMI</label><input type="text" id="editBmi" value="${p.bmi||''}" /></div>
       <div class="edit-actions">
         <button class="btn btn-outline" onclick="cancelEdit('encounter')">Cancel</button>
         <button class="btn btn-blue" onclick="saveEncounterEdit()"><i class="ti ti-check"></i> Save</button>
@@ -717,6 +728,10 @@ async function saveEncounterEdit() {
     hr: document.getElementById('editHr').value,
     temp: document.getElementById('editTemp').value,
     wt: document.getElementById('editWt').value,
+    resp_rate: document.getElementById('editRespRate').value,
+    o2_sat: document.getElementById('editO2Sat').value,
+    height: document.getElementById('editHeight').value,
+    bmi: document.getElementById('editBmi').value,
   };
   try {
     const updated = await api('PUT', `/api/patients/${currentPatient.mr}`, data);
@@ -749,10 +764,14 @@ function cancelEdit(type) {
       <div class="info-row"><span class="info-label">Physician</span><span class="info-value">${p.sched}</span></div>
       <div class="info-row"><span class="info-label">Chief Complaint</span><span class="info-value">${p.cc}</span></div>
       <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="badge ${STATUS[p.status].badgeClass}" style="cursor:pointer" onclick="showPatientStatusDropdownInPatient(event)"><span class="badge-dot ${STATUS[p.status].dotClass}"></span>${STATUS[p.status].label}</span></span></div>
-      <div class="info-row"><span class="info-label">Blood Pressure</span><span class="info-value">${p.bp||'—'}</span></div>
-      <div class="info-row"><span class="info-label">Heart Rate</span><span class="info-value">${p.hr?p.hr+' bpm':'—'}</span></div>
       <div class="info-row"><span class="info-label">Temperature</span><span class="info-value">${p.temp||'—'}</span></div>
-      <div class="info-row"><span class="info-label">Weight</span><span class="info-value">${p.wt||'—'}</span></div>`;
+      <div class="info-row"><span class="info-label">Blood Pressure</span><span class="info-value">${p.bp||'—'}</span></div>
+      <div class="info-row"><span class="info-label">Pulse Rate</span><span class="info-value">${p.hr?p.hr+' bpm':'—'}</span></div>
+      <div class="info-row"><span class="info-label">Respiratory Rate</span><span class="info-value">${p.resp_rate?p.resp_rate+' breaths/min':'—'}</span></div>
+      <div class="info-row"><span class="info-label">O2 Saturation</span><span class="info-value">${p.o2_sat?p.o2_sat+'%':'—'}</span></div>
+      <div class="info-row"><span class="info-label">Height</span><span class="info-value">${p.height||'—'}</span></div>
+      <div class="info-row"><span class="info-label">Weight</span><span class="info-value">${p.wt||'—'}</span></div>
+      <div class="info-row"><span class="info-label">BMI</span><span class="info-value">${p.bmi||'—'}</span></div>`;
   }
 }
 
@@ -1161,31 +1180,40 @@ function renderSection(sec) {
   }
 
   else if (sec === 'note') {
+    const noteFields = ['noteChiefComplaint','noteHPI','notePMH','noteSurgical','noteHospitalizations','noteHealth','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
+    const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','surgical_history','hospitalizations','health_maintenance','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
+    const fieldLabels = ['Chief Complaint','History of Present Illness','Past Medical History','Surgical History','Hospitalizations','Health Maintenance/Immunizations','Family History','Social History','Review of Systems','Physical Exam','Assessment','Differential Diagnosis','Plan'];
+    const fieldPlaceholders = ['Reason for visit&hellip;','Detailed history of current illness&hellip;','Previous medical conditions&hellip;','Previous surgeries&hellip;','Previous hospital admissions&hellip;','Preventive care, vaccinations&hellip;','Family medical history&hellip;','Social determinants, habits&hellip;','Systematic review of body systems&hellip;','Examination findings&hellip;','Diagnosis or clinical impression&hellip;','Differential diagnoses&hellip;','Treatment plan, follow-up, referrals&hellip;'];
+
+    function getFieldValue(key, index) {
+      if (editingNoteId) {
+        const note = currentPhysicianNotes.find(n => n.id === editingNoteId);
+        if (note && note[key] !== undefined) return note[key];
+      }
+      if (noteFormData[key] !== undefined) return noteFormData[key];
+      return '';
+    }
+
+    const formHtml = `
+      <div id="noteFormContainer" style="margin-bottom:16px;padding:12px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:4px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--blue-mid);">${editingNoteId ? 'Edit Note' : 'Add New Note'}</div>
+        ${noteFields.map((id, i) => `
+          <div class="field" style="margin-bottom:12px;"><label>${fieldLabels[i]}</label><input type="hidden" id="trix_${id}" value=""><trix-editor input="trix_${id}" style="min-height:80px;border:1px solid var(--border);border-radius:4px;"></trix-editor></div>
+        `).join('')}
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn btn-outline" onclick="cancelNoteForm()">Cancel</button>
+          <button class="btn btn-green" onclick="${editingNoteId ? 'saveNoteEdit()' : 'savePhysicianNote()'}"><i class="ti ti-device-floppy"></i> ${editingNoteId ? 'Save Edit' : 'Save Note'}</button>
+        </div>
+      </div>`;
+
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-notes"></i> Physician Note</div>
         <div class="info-card-body">
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;">
-            <button class="btn btn-green" onclick="toggleNoteForm()"><i class="ti ti-plus"></i> Add Note</button>
+            ${!editingNoteId ? `<button class="btn btn-green" onclick="toggleNoteForm()"><i class="ti ti-plus"></i> Add Note</button>` : ''}
           </div>
-          <div id="noteFormContainer" style="display:none;margin-bottom:16px;padding:12px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:4px;">
-            <div class="field" style="margin-bottom:12px;"><label>Chief Complaint</label><textarea class="note-area" id="noteChiefComplaint" placeholder="Reason for visit&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>History of Present Illness</label><textarea class="note-area" id="noteHPI" placeholder="Detailed history of current illness&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Past Medical History</label><textarea class="note-area" id="notePMH" placeholder="Previous medical conditions&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Surgical History</label><textarea class="note-area" id="noteSurgical" placeholder="Previous surgeries&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Hospitalizations</label><textarea class="note-area" id="noteHospitalizations" placeholder="Previous hospital admissions&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Health Maintenance/Immunizations</label><textarea class="note-area" id="noteHealth" placeholder="Preventive care, vaccinations&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Family History</label><textarea class="note-area" id="noteFamily" placeholder="Family medical history&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Social History</label><textarea class="note-area" id="noteSocial" placeholder="Social determinants, habits&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Review of Systems</label><textarea class="note-area" id="noteROS" placeholder="Systematic review of body systems&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Physical Exam</label><textarea class="note-area" id="notePhysical" placeholder="Examination findings&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Assessment</label><textarea class="note-area" id="noteAssessment" placeholder="Diagnosis or clinical impression&hellip;"></textarea></div>
-            <div class="field" style="margin-bottom:12px;"><label>Plan</label><textarea class="note-area" id="notePlan" placeholder="Treatment plan, follow-up, referrals&hellip;"></textarea></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="btn btn-outline" onclick="clearPhysicianNote()">Clear</button>
-              <button class="btn btn-green" onclick="savePhysicianNote()"><i class="ti ti-device-floppy"></i> Save Note</button>
-            </div>
-          </div>
+          ${noteFormOpen || editingNoteId ? formHtml : ''}
               ${currentPhysicianNotes.length ? `
           <div style="margin-bottom:16px;">
             <div style="font-weight:600;font-size:12px;color:var(--text-muted);margin-bottom:8px;">Previous Notes:</div>
@@ -1194,10 +1222,11 @@ function renderSection(sec) {
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                   <div>
                     <div style="font-weight:600;font-size:13px;">${n.chief_complaint || 'No Chief Complaint'}</div>
-                    <div style="font-size:11px;color:var(--text-muted);">${n.visit_date || n.created_at}${n.visit_type ? ' · ' + n.visit_type : ''} · Signed by: ${n.created_by||'—'}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${n.visit_date || n.created_at}${n.visit_type ? ' · ' + n.visit_type : ''} · Signed by: ${n.created_by||'—'}${n.edited_at ? ' · <span style="color:var(--blue-mid);font-weight:600;">Edited</span> ' + n.edited_at : ''}</div>
                   </div>
                   <div style="display:flex;gap:4px;">
                     <button class="btn btn-outline" style="font-size:10px;padding:4px 8px;" onclick="toggleNoteDetails(${n.id})">Open</button>
+                    <button class="btn btn-outline" style="font-size:10px;padding:4px 8px;" onclick="editPhysicianNote(${n.id})">Edit</button>
                     <button class="btn btn-outline" style="font-size:10px;padding:4px 8px;" onclick="deletePhysicianNote(${n.id})">Delete</button>
                   </div>
                 </div>
@@ -1212,6 +1241,7 @@ function renderSection(sec) {
                   ${n.review_of_systems ? `<div style="margin-bottom:4px;"><strong>ROS:</strong> ${n.review_of_systems}</div>` : ''}
                   ${n.physical_exam ? `<div style="margin-bottom:4px;"><strong>Physical Exam:</strong> ${n.physical_exam}</div>` : ''}
                   ${n.assessment ? `<div style="margin-bottom:4px;"><strong>Assessment:</strong> ${n.assessment}</div>` : ''}
+                  ${n.differential_diagnosis ? `<div style="margin-bottom:4px;"><strong>Differential Diagnosis:</strong> ${n.differential_diagnosis}</div>` : ''}
                   ${n.plan ? `<div style="margin-bottom:4px;"><strong>Plan:</strong> ${n.plan}</div>` : ''}
                 </div>
               </div>
@@ -1219,6 +1249,54 @@ function renderSection(sec) {
           </div>` : '<div class="empty-state"><i class="ti ti-notes"></i>No notes on file</div>'}
         </div>
       </div>`;
+
+    // Initialize Trix editors if form is open
+    if (noteFormOpen || editingNoteId) {
+      window.trixEditors = {};
+      noteFields.forEach((id, i) => {
+        const hidden = document.getElementById('trix_' + id);
+        const trixEl = document.querySelector('trix-editor[input="trix_' + id + '"]');
+        if (hidden && trixEl) {
+          const val = getFieldValue(fieldKeys[i], i);
+          let loaded = false;
+          function initEditor() {
+            if (loaded) return;
+            loaded = true;
+            if (val) trixEl.editor.loadHTML(val);
+            hidden.addEventListener('trix-change', () => {
+              noteFormData[fieldKeys[i]] = hidden.value;
+            });
+            window.trixEditors[id] = { hidden, editor: trixEl };
+
+            // Add indent/outdent buttons to toolbar
+            const toolbar = trixEl.previousElementSibling;
+            if (toolbar && toolbar.classList.contains('trix-toolbar')) {
+              const group = document.createElement('span');
+              group.className = 'button_group';
+              group.innerHTML = `
+                <button type="button" class="trix-button trix-icon-not_bold" data-trix-action="indent" title="Indent" aria-label="Indent">⇥</button>
+                <button type="button" class="trix-button trix-icon-not_bold" data-trix-action="outdent" title="Outdent" aria-label="Outdent">⇤</button>
+              `;
+              toolbar.querySelector('.trix-button_row').appendChild(group);
+              group.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('mousedown', (e) => {
+                  e.preventDefault();
+                  trixEl.focus();
+                  const action = btn.getAttribute('data-trix-action');
+                  if (action === 'indent') {
+                    document.execCommand('indent');
+                  } else {
+                    document.execCommand('outdent');
+                  }
+                });
+              });
+            }
+          }
+          trixEl.addEventListener('trix-initialize', initEditor);
+          setTimeout(initEditor, 300);
+        }
+      });
+    }
   }
 
   else if (sec === 'nursing') {
@@ -1275,21 +1353,49 @@ function updateOrderOptions() {
 }
 
 // ── PHYSICIAN NOTES ──
+function toggleNoteForm() {
+  noteFormOpen = !noteFormOpen;
+  editingNoteId = null;
+  noteFormData = {};
+  renderSection('note');
+}
+
+function cancelNoteForm() {
+  noteFormOpen = false;
+  editingNoteId = null;
+  noteFormData = {};
+  renderSection('note');
+}
+
+function editPhysicianNote(id) {
+  const note = currentPhysicianNotes.find(n => n.id === id);
+  if (!note) return;
+  editingNoteId = id;
+  noteFormOpen = false;
+  noteFormData = {};
+  renderSection('note');
+}
+
 async function savePhysicianNote() {
   if (!currentPatient) return;
-  const chief_complaint = document.getElementById('noteChiefComplaint')?.value;
-  const history_present_illness = document.getElementById('noteHPI')?.value;
-  const past_medical_history = document.getElementById('notePMH')?.value;
-  const surgical_history = document.getElementById('noteSurgical')?.value;
-  const hospitalizations = document.getElementById('noteHospitalizations')?.value;
-  const health_maintenance = document.getElementById('noteHealth')?.value;
-  const family_history = document.getElementById('noteFamily')?.value;
-  const social_history = document.getElementById('noteSocial')?.value;
-  const review_of_systems = document.getElementById('noteROS')?.value;
-  const physical_exam = document.getElementById('notePhysical')?.value;
-  const assessment = document.getElementById('noteAssessment')?.value;
-  const plan = document.getElementById('notePlan')?.value;
-  if (!chief_complaint && !history_present_illness && !past_medical_history && !surgical_history && !hospitalizations && !health_maintenance && !family_history && !social_history && !review_of_systems && !physical_exam && !assessment && !plan) {
+  function getTrixHtml(id) {
+    const t = window.trixEditors && window.trixEditors[id];
+    return t ? t.hidden.value : '';
+  }
+  const chief_complaint = getTrixHtml('noteChiefComplaint');
+  const history_present_illness = getTrixHtml('noteHPI');
+  const past_medical_history = getTrixHtml('notePMH');
+  const surgical_history = getTrixHtml('noteSurgical');
+  const hospitalizations = getTrixHtml('noteHospitalizations');
+  const health_maintenance = getTrixHtml('noteHealth');
+  const family_history = getTrixHtml('noteFamily');
+  const social_history = getTrixHtml('noteSocial');
+  const review_of_systems = getTrixHtml('noteROS');
+  const physical_exam = getTrixHtml('notePhysical');
+  const assessment = getTrixHtml('noteAssessment');
+  const differential_diagnosis = getTrixHtml('noteDiffDx');
+  const plan = getTrixHtml('notePlan');
+  if (!chief_complaint && !history_present_illness && !past_medical_history && !surgical_history && !hospitalizations && !health_maintenance && !family_history && !social_history && !review_of_systems && !physical_exam && !assessment && !differential_diagnosis && !plan) {
     alert('Please enter at least one field.');
     return;
   }
@@ -1306,13 +1412,63 @@ async function savePhysicianNote() {
       review_of_systems,
       physical_exam,
       assessment,
+      differential_diagnosis,
       plan,
     });
+    noteFormOpen = false;
+    noteFormData = {};
     await loadPatientData(currentPatient.mr);
     renderSection('note');
-    clearPhysicianNote();
   } catch (e) {
     alert('Error saving note: ' + e.message);
+  }
+}
+
+async function saveNoteEdit() {
+  if (!currentPatient || !editingNoteId) return;
+  function getTrixHtml(id) {
+    const t = window.trixEditors && window.trixEditors[id];
+    return t ? t.hidden.value : '';
+  }
+  const chief_complaint = getTrixHtml('noteChiefComplaint');
+  const history_present_illness = getTrixHtml('noteHPI');
+  const past_medical_history = getTrixHtml('notePMH');
+  const surgical_history = getTrixHtml('noteSurgical');
+  const hospitalizations = getTrixHtml('noteHospitalizations');
+  const health_maintenance = getTrixHtml('noteHealth');
+  const family_history = getTrixHtml('noteFamily');
+  const social_history = getTrixHtml('noteSocial');
+  const review_of_systems = getTrixHtml('noteROS');
+  const physical_exam = getTrixHtml('notePhysical');
+  const assessment = getTrixHtml('noteAssessment');
+  const differential_diagnosis = getTrixHtml('noteDiffDx');
+  const plan = getTrixHtml('notePlan');
+  if (!chief_complaint && !history_present_illness && !past_medical_history && !surgical_history && !hospitalizations && !health_maintenance && !family_history && !social_history && !review_of_systems && !physical_exam && !assessment && !differential_diagnosis && !plan) {
+    alert('Please enter at least one field.');
+    return;
+  }
+  try {
+    await api('PUT', `/api/patients/${currentPatient.mr}/physician-notes/${editingNoteId}`, {
+      chief_complaint,
+      history_present_illness,
+      past_medical_history,
+      surgical_history,
+      hospitalizations,
+      health_maintenance,
+      family_history,
+      social_history,
+      review_of_systems,
+      physical_exam,
+      assessment,
+      differential_diagnosis,
+      plan,
+    });
+    editingNoteId = null;
+    noteFormData = {};
+    await loadPatientData(currentPatient.mr);
+    renderSection('note');
+  } catch (e) {
+    alert('Error saving edit: ' + e.message);
   }
 }
 
@@ -1325,26 +1481,6 @@ async function deletePhysicianNote(id) {
   } catch (e) {
     alert('Error deleting note: ' + e.message);
   }
-}
-
-function clearPhysicianNote() {
-  document.getElementById('noteChiefComplaint').value = '';
-  document.getElementById('noteHPI').value = '';
-  document.getElementById('notePMH').value = '';
-  document.getElementById('noteSurgical').value = '';
-  document.getElementById('noteHospitalizations').value = '';
-  document.getElementById('noteHealth').value = '';
-  document.getElementById('noteFamily').value = '';
-  document.getElementById('noteSocial').value = '';
-  document.getElementById('noteROS').value = '';
-  document.getElementById('notePhysical').value = '';
-  document.getElementById('noteAssessment').value = '';
-  document.getElementById('notePlan').value = '';
-}
-
-function toggleNoteForm() {
-  const form = document.getElementById('noteFormContainer');
-  form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
 function toggleNoteDetails(id) {
@@ -1381,149 +1517,289 @@ function updateDeleteBtn() {
   }
 }
 
-function buildReportContent(doc, p) {
-  let y = 20;
-  const lineHeight = 7;
-  const pageHeight = 280;
+function buildReportContent(p) {
+  const { Paragraph, TextRun, BorderStyle } = docx;
+  const paragraphs = [];
+  const font = 'Helvetica';
 
-  function checkNewPage(neededSpace) {
-    if (y + neededSpace > pageHeight) { doc.addPage(); y = 20; }
+  function formatVisitType(type) {
+    if (!type) return '—';
+    return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
-  function addText(text, label, isBold) {
+  function addSimpleLine(label, value) {
+    if (!value) return;
+    paragraphs.push(new Paragraph({
+      spacing: { after: 80 },
+      children: [
+        new TextRun({ text: label + ': ', size: 20, font }),
+        new TextRun({ text: value, size: 20, font }),
+      ],
+    }));
+  }
+
+  function addLabelLine(label) {
+    paragraphs.push(new Paragraph({
+      spacing: { before: 200, after: 60 },
+      children: [new TextRun({ text: label + ':', bold: true, size: 22, font })],
+    }));
+  }
+
+  function addValueLine(html) {
+    if (!html) return;
+    addRichContent(html);
+  }
+
+  function addIndentedLine(text) {
     if (!text) return;
-    checkNewPage(lineHeight * 2);
-    if (label) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text(label, 20, y);
-      y += lineHeight;
-    }
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const lines = doc.splitTextToSize(text, 170);
-    doc.text(lines, 20, y);
-    y += lines.length * lineHeight;
-    y += 3;
+    paragraphs.push(new Paragraph({
+      spacing: { after: 60 },
+      indent: { left: 240 },
+      children: [new TextRun({ text, size: 20, font })],
+    }));
   }
 
-  // Header
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text('Physician Note Report', 20, y);
-  y += 12;
+  function stripHtml(html) {
+    if (!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
 
-  // Patient Information
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('Patient Information', 20, y);
-  y += 8;
+  function parseInlineRuns(node) {
+    const runs = [];
+    node.childNodes.forEach(child => {
+      if (child.nodeType === 3) {
+        const text = child.textContent;
+        if (text) runs.push(new TextRun({ text, size: 20, font }));
+      } else if (child.nodeType === 1) {
+        const tag = child.tagName.toLowerCase();
+        const isBold = tag === 'strong' || tag === 'b';
+        const isItalic = tag === 'em' || tag === 'i';
+        if (tag === 'br') {
+          runs.push(new TextRun({ text: '\n', size: 20, font }));
+        } else {
+          const innerRuns = parseInlineRuns(child);
+          innerRuns.forEach(r => {
+            if (isBold) r.options.bold = true;
+            if (isItalic) r.options.italics = true;
+            runs.push(r);
+          });
+        }
+      }
+    });
+    return runs;
+  }
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Name: ${p.name}`, 20, y); y += lineHeight;
-  doc.text(`MR Number: ${p.mr}`, 20, y); y += lineHeight;
-  doc.text(`DOB: ${p.dob}`, 20, y); y += lineHeight;
-  doc.text(`Sex: ${p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : 'Other'}`, 20, y); y += lineHeight;
-  doc.text(`Phone: ${p.phone || '—'}`, 20, y); y += lineHeight;
-  doc.text(`Insurance: ${p.ins || '—'}`, 20, y); y += lineHeight;
-  y += 5;
+  function addRichContent(html) {
+    if (!html) return;
+    const clean = stripHtml(html);
+    if (!clean.trim()) return;
 
-  // Get the most recent physician note
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const body = doc.body;
+
+    function processList(listEl, level) {
+      const isBullet = listEl.tagName.toLowerCase() === 'ul';
+      Array.from(listEl.children).forEach(child => {
+        if (child.tagName.toLowerCase() !== 'li') return;
+        const runs = [];
+        child.childNodes.forEach(cn => {
+          if (cn.nodeType === 3) {
+            const t = cn.textContent;
+            if (t && t.trim()) runs.push(new TextRun({ text: t.trim(), size: 20, font }));
+          } else if (cn.nodeType === 1) {
+            const t = cn.tagName.toLowerCase();
+            if (t !== 'ul' && t !== 'ol') {
+              const innerRuns = parseInlineRuns(cn);
+              const isBold = t === 'strong' || t === 'b';
+              const isItalic = t === 'em' || t === 'i';
+              innerRuns.forEach(r => {
+                if (isBold) r.options.bold = true;
+                if (isItalic) r.options.italics = true;
+                runs.push(r);
+              });
+            }
+          }
+        });
+        if (runs.length) {
+          const pOpts = {
+            spacing: { after: 60 },
+            indent: { left: 360 * (level + 1) },
+            children: runs,
+          };
+          if (isBullet) {
+            pOpts.bullet = { level };
+          } else {
+            pOpts.numbering = { reference: 'ol-list', level };
+          }
+          paragraphs.push(new Paragraph(pOpts));
+        }
+        child.querySelectorAll(':scope > ul, :scope > ol').forEach(sub => {
+          processList(sub, level + 1);
+        });
+      });
+    }
+
+    function processNode(node) {
+      node.childNodes.forEach(child => {
+        if (child.nodeType === 3) {
+          const text = child.textContent;
+          if (text && text.trim()) {
+            paragraphs.push(new Paragraph({
+              spacing: { after: 80 },
+              children: [new TextRun({ text: text.trim(), size: 20, font })],
+            }));
+          }
+        } else if (child.nodeType === 1) {
+          const tag = child.tagName.toLowerCase();
+          if (tag === 'p') {
+            const runs = parseInlineRuns(child);
+            if (runs.length) {
+              paragraphs.push(new Paragraph({
+                spacing: { after: 80 },
+                children: runs,
+              }));
+            }
+          } else if (tag === 'ul' || tag === 'ol') {
+            processList(child, 0);
+          } else if (tag === 'blockquote') {
+            const runs = parseInlineRuns(child);
+            if (runs.length) {
+              paragraphs.push(new Paragraph({
+                spacing: { after: 60 },
+                indent: { left: 480 },
+                children: runs,
+              }));
+            }
+          } else {
+            processNode(child);
+          }
+        }
+      });
+    }
+
+    processNode(body);
+  }
+
+  // ── Title: bold 18pt ──
+  paragraphs.push(new Paragraph({
+    spacing: { after: 240 },
+    children: [new TextRun({ text: 'Physician Note Report', bold: true, size: 36, font })],
+  }));
+
+  // ── Section Header: bold 14pt ──
+  paragraphs.push(new Paragraph({
+    spacing: { before: 200, after: 120 },
+    children: [new TextRun({ text: 'Patient Information', bold: true, size: 28, font })],
+  }));
+
+  addSimpleLine('Name', p.name);
+  addSimpleLine('MR Number', p.mr);
+  addSimpleLine('DOB', p.dob);
+  addSimpleLine('Sex', p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : 'Other');
+  addSimpleLine('Phone', p.phone || '—');
+  addSimpleLine('Insurance', p.ins || '—');
+
   const latestNote = currentPhysicianNotes.length > 0 ? currentPhysicianNotes[0] : null;
 
   if (latestNote) {
-    checkNewPage(20);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Physician Note', 20, y);
-    y += 8;
+    // ── Section Header: bold 14pt ──
+    paragraphs.push(new Paragraph({
+      spacing: { before: 240, after: 120 },
+      children: [new TextRun({ text: 'Physician Note', bold: true, size: 28, font })],
+    }));
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Date: ${latestNote.visit_date || latestNote.created_at}`, 20, y); y += lineHeight;
-    doc.text(`Visit Type: ${latestNote.visit_type || '—'}`, 20, y); y += lineHeight;
-    doc.text(`Signed by: ${latestNote.created_by || '—'}`, 20, y); y += lineHeight;
-    y += 5;
+    addSimpleLine('Date', latestNote.visit_date || latestNote.created_at);
+    addSimpleLine('Visit Type', formatVisitType(latestNote.visit_type));
+    addSimpleLine('Signed by', latestNote.created_by || '—');
+    if (latestNote.edited_at) {
+      paragraphs.push(new Paragraph({
+        spacing: { after: 120 },
+        children: [
+          new TextRun({ text: 'This note was edited on ', bold: true, size: 20, font, italics: true, color: 'C00000' }),
+          new TextRun({ text: latestNote.edited_at, size: 20, font, italics: true, color: 'C00000' }),
+        ],
+      }));
+    }
 
-    addText(latestNote.chief_complaint, 'Chief Complaint:', true);
-    addText(latestNote.history_present_illness, 'History of Present Illness:', true);
-    addText(latestNote.past_medical_history, 'Past Medical History:', true);
-    addText(latestNote.surgical_history, 'Surgical History:', true);
-    addText(latestNote.hospitalizations, 'Hospitalizations:', true);
+    addLabelLine('Chief Complaint'); addValueLine(latestNote.chief_complaint);
+    addLabelLine('History of Present Illness'); addValueLine(latestNote.history_present_illness);
+    addLabelLine('Past Medical History'); addValueLine(latestNote.past_medical_history);
+    addLabelLine('Surgical History'); addValueLine(latestNote.surgical_history);
+    addLabelLine('Hospitalizations'); addValueLine(latestNote.hospitalizations);
 
-    checkNewPage(20);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('Medications', 20, y);
-    y += 8;
+    // ── Sub-Header: bold 12pt ──
+    paragraphs.push(new Paragraph({
+      spacing: { before: 240, after: 120 },
+      children: [new TextRun({ text: 'Medications', bold: true, size: 24, font })],
+    }));
 
     if (currentMeds && currentMeds.length > 0) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
       currentMeds.forEach(med => {
-        checkNewPage(lineHeight * 6);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${med.name}`, 20, y);
-        y += lineHeight;
-        doc.setFont('helvetica', 'normal');
-        if (med.dose) { doc.text(`Dose: ${med.dose}`, 25, y); y += lineHeight; }
-        if (med.freq) { doc.text(`Frequency: ${med.freq}`, 25, y); y += lineHeight; }
-        if (med.route) { doc.text(`Route: ${med.route}`, 25, y); y += lineHeight; }
-        if (med.start) { doc.text(`Start Date: ${med.start}`, 25, y); y += lineHeight; }
-        if (med.prescriber) { doc.text(`Prescriber: ${med.prescriber}`, 25, y); y += lineHeight; }
-        y += 2;
+        paragraphs.push(new Paragraph({
+          spacing: { before: 100, after: 60 },
+          children: [new TextRun({ text: med.name, bold: true, size: 20, font })],
+        }));
+        if (med.dose) addIndentedLine('Dose: ' + med.dose);
+        if (med.freq) addIndentedLine('Frequency: ' + med.freq);
+        if (med.route) addIndentedLine('Route: ' + med.route);
+        if (med.start) addIndentedLine('Start Date: ' + med.start);
+        if (med.prescriber) addIndentedLine('Prescriber: ' + med.prescriber);
       });
     } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('No medications on file', 20, y);
-      y += lineHeight;
+      addLabelLine('Medications'); addValueLine('No medications on file');
     }
-    y += 5;
 
-    checkNewPage(20);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('Allergies', 20, y);
-    y += 8;
+    // ── Sub-Header: bold 12pt ──
+    paragraphs.push(new Paragraph({
+      spacing: { before: 240, after: 120 },
+      children: [new TextRun({ text: 'Allergies', bold: true, size: 24, font })],
+    }));
 
     if (currentAllergies && currentAllergies.length > 0) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
       currentAllergies.forEach(allergy => {
-        checkNewPage(lineHeight * 4);
-        doc.setFont('helvetica', 'bold');
         const allergyType = allergy.type ? allergy.type.charAt(0).toUpperCase() + allergy.type.slice(1) : 'Unknown';
-        doc.text(`${allergy.allergen} (${allergyType})`, 20, y);
-        y += lineHeight;
-        doc.setFont('helvetica', 'normal');
-        if (allergy.reaction) { doc.text(`Reaction: ${allergy.reaction}`, 25, y); y += lineHeight; }
-        if (allergy.first_encounter) { doc.text(`First Encountered: ${allergy.first_encounter}`, 25, y); y += lineHeight; }
-        y += 2;
+        paragraphs.push(new Paragraph({
+          spacing: { before: 100, after: 60 },
+          children: [new TextRun({ text: allergy.allergen + ' (' + allergyType + ')', bold: true, size: 20, font })],
+        }));
+        if (allergy.reaction) addIndentedLine('Reaction: ' + allergy.reaction);
+        if (allergy.first_encounter) addIndentedLine('First Encountered: ' + allergy.first_encounter);
       });
     } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('No allergies on file', 20, y);
-      y += lineHeight;
+      addLabelLine('Allergies'); addValueLine('No allergies on file');
     }
-    y += 5;
 
-    addText(latestNote.health_maintenance, 'Health Maintenance/Immunizations:', true);
-    addText(latestNote.family_history, 'Family History:', true);
-    addText(latestNote.social_history, 'Social History:', true);
-    addText(latestNote.review_of_systems, 'Review of Systems:', true);
-    addText(latestNote.physical_exam, 'Physical Exam:', true);
-    addText(latestNote.assessment, 'Assessment:', true);
-    addText(latestNote.plan, 'Plan:', true);
+    addLabelLine('Health Maintenance/Immunizations'); addValueLine(latestNote.health_maintenance);
+    addLabelLine('Family History'); addValueLine(latestNote.family_history);
+    addLabelLine('Social History'); addValueLine(latestNote.social_history);
+    addLabelLine('Review of Systems'); addValueLine(latestNote.review_of_systems);
+    addLabelLine('Physical Exam'); addValueLine(latestNote.physical_exam);
+
+    // ── Vital Signs subsection under Physical Exam ──
+    paragraphs.push(new Paragraph({
+      spacing: { before: 120, after: 80 },
+      children: [new TextRun({ text: 'Vital Signs', bold: true, size: 20, font })],
+    }));
+    addSimpleLine('Temperature', p.temp);
+    addSimpleLine('Blood Pressure', p.bp);
+    addSimpleLine('Pulse Rate', p.hr ? p.hr + ' bpm' : null);
+    addSimpleLine('Respiratory Rate', p.resp_rate ? p.resp_rate + ' breaths/min' : null);
+    addSimpleLine('O2 Saturation', p.o2_sat ? p.o2_sat + '%' : null);
+    addSimpleLine('Height', p.height);
+    addSimpleLine('Weight', p.wt);
+    addSimpleLine('BMI', p.bmi);
+
+    addLabelLine('Assessment'); addValueLine(latestNote.assessment);
+    addLabelLine('Differential Diagnosis'); addValueLine(latestNote.differential_diagnosis);
+    addLabelLine('Plan'); addValueLine(latestNote.plan);
   } else {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('No physician notes on file for this patient.', 20, y);
+    addLabelLine('Physician Note'); addValueLine('No physician notes on file for this patient.');
   }
 
-  return y;
+  return paragraphs;
 }
 
 function openAddendumModal() {
@@ -1546,42 +1822,42 @@ async function submitAddendum() {
   const signedBy = currentUser || 'Dr. Unknown';
 
   try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
     const p = currentPatient;
-    const lineHeight = 7;
-    let y = buildReportContent(doc, p);
+    const reportParagraphs = buildReportContent(p);
 
-    // Addendum section
-    y += 5;
-    doc.setDrawColor(200);
-    doc.line(20, y, 190, y);
-    y += 8;
-    if (y + 20 > 280) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Addendum', 20, y);
-    y += 8;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Date: ${timestamp}`, 20, y); y += lineHeight;
-    y += 3;
-    const addendumLines = doc.splitTextToSize(addendum, 170);
-    doc.text(addendumLines, 20, y);
-    y += addendumLines.length * lineHeight;
-    y += 5;
+    // Addendum section — bold 14pt header, normal 10pt body, matching PDF
+    reportParagraphs.push(new docx.Paragraph({
+      spacing: { before: 200 },
+      children: [],
+    }));
+    reportParagraphs.push(new docx.Paragraph({
+      spacing: { before: 160, after: 100 },
+      children: [new docx.TextRun({ text: 'Addendum', bold: true, size: 28, font: 'Helvetica' })],
+    }));
+    reportParagraphs.push(new docx.Paragraph({
+      spacing: { after: 140 },
+      children: [new docx.TextRun({ text: 'Date: ', bold: true, size: 20, font: 'Helvetica' }),
+                 new docx.TextRun({ text: timestamp, size: 20, font: 'Helvetica' })],
+    }));
+    reportParagraphs.push(new docx.Paragraph({
+      spacing: { after: 140 },
+      children: [new docx.TextRun({ text: addendum, size: 20, font: 'Helvetica' })],
+    }));
+    reportParagraphs.push(new docx.Paragraph({ spacing: { before: 200 }, children: [] }));
+    reportParagraphs.push(new docx.Paragraph({
+      children: [new docx.TextRun({ text: `Signed by: ${signedBy}`, italics: true, size: 20, font: 'Helvetica' })],
+    }));
 
-    // Signed by
-    y += 5;
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
-    doc.text(`Signed by: ${signedBy}`, 20, y);
+    const doc = new docx.Document({
+      numbering: { config: [{ reference: 'ol-list', levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT }] }] },
+      sections: [{ children: reportParagraphs }],
+    });
 
-    const fileName = `${p.name.replace(/\s+/g, '_')}_Addendum_${now.toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
+    const blob = await docx.Packer.toBlob(doc);
+    const fileName = `${p.name.replace(/\s+/g, '_')}_Addendum_${now.toISOString().split('T')[0]}.docx`;
+    saveAs(blob, fileName);
   } catch (error) {
-    console.error('Error generating addendum PDF:', error);
+    console.error('Error generating addendum:', error);
     alert('Error generating addendum: ' + error.message);
   }
 }
@@ -1589,50 +1865,47 @@ async function submitAddendum() {
 async function generateReport() {
   if (!currentPatient) return;
 
-  // Check if user is admin
-  const isAdmin = await fetch('/api/auth/user').then(r => r.json()).then(u => u.role === 'admin').catch(() => false);
+  const confirmed = confirm('Generate the physician note report as a DOCX file?');
+  if (!confirmed) return;
 
-  // If not admin, ask for confirmation to lock the patient and unlock results
-  if (!isAdmin) {
-    const confirmed = confirm('Generating this report will lock this patient and reveal lab/imaging results. You will not be able to make further changes to this patient after the report is generated. Do you want to continue?');
-    if (!confirmed) return;
-
-    // Lock the patient and unlock results
-    try {
-      await api('POST', `/api/patients/${currentPatient.mr}/lock`);
-      await api('POST', `/api/patients/${currentPatient.mr}/unlock-results`);
-      alert('Patient has been locked and results are now visible.');
-    } catch (e) {
-      alert('Error: ' + e.message);
-      return;
-    }
-  }
+  // // Lock feature — commented out for now
+  // const isAdmin = await fetch('/api/auth/user').then(r => r.json()).then(u => u.role === 'admin').catch(() => false);
+  // if (!isAdmin) {
+  //   try {
+  //     await api('POST', `/api/patients/${currentPatient.mr}/lock`);
+  //     await api('POST', `/api/patients/${currentPatient.mr}/unlock-results`);
+  //   } catch (e) {
+  //     alert('Error: ' + e.message);
+  //     return;
+  //   }
+  // }
 
   try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
     const p = currentPatient;
-    const lineHeight = 7;
-    let y = buildReportContent(doc, p);
+    const reportParagraphs = buildReportContent(p);
 
     // Signed by
-    y += 5;
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
-    doc.text(`Signed by: ${currentUser || 'Dr. Unknown'}`, 20, y);
+    reportParagraphs.push(new docx.Paragraph({ spacing: { before: 300 }, children: [] }));
+    reportParagraphs.push(new docx.Paragraph({
+      children: [new docx.TextRun({ text: `Signed by: ${currentUser || 'Dr. Unknown'}`, italics: true, size: 20, font: 'Helvetica' })],
+    }));
 
-    // Save the PDF
-    const fileName = `${p.name.replace(/\s+/g, '_')}_Physician_Note_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
+    const doc = new docx.Document({
+      numbering: { config: [{ reference: 'ol-list', levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT }] }] },
+      sections: [{ children: reportParagraphs }],
+    });
+
+    const blob = await docx.Packer.toBlob(doc);
+    const fileName = `${p.name.replace(/\s+/g, '_')}_Physician_Note_${new Date().toISOString().split('T')[0]}.docx`;
+    saveAs(blob, fileName);
 
     // Enable addendum button
     addendumEnabled = true;
     updateAddendumBtn();
     updateDeleteBtn();
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    alert('Error generating PDF: ' + error.message);
+    console.error('Error generating report:', error);
+    alert('Error generating report: ' + error.message);
   }
 }
 

@@ -6,7 +6,10 @@
 <title>EMR Simulator</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 <link rel="stylesheet" href="emr.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.0.2/build/index.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/trix@2/dist/trix.css">
+<script src="https://cdn.jsdelivr.net/npm/trix@2/dist/trix.umd.min.js"></script>
 </head>
 <body>
 
@@ -96,7 +99,6 @@
     <button class="btn-tab" onclick="goSchedule()"><i class="ti ti-arrow-left"></i> Back</button>
     <button class="btn-tab" onclick="generateReport()"><i class="ti ti-file-download"></i> Generate Report</button>
     <button class="btn-tab" id="addendumBtn" onclick="openAddendumModal()" style="opacity:0.4;pointer-events:none;"><i class="ti ti-file-plus"></i> Add Addendum</button>
-    <button class="btn-tab active-tab" id="noteTabBtn" onclick="setSection('note')"><i class="ti ti-file-text"></i> Note</button>
       <button class="btn-tab" id="interviewBtn" onclick="openInterviewModal()" style="color:#7c3aed;"><i class="ti ti-message-circle"></i> Interview</button>
         <button class="btn-tab" id="deletePatientBtn" onclick="confirmDeletePatient()" style="color:var(--red);"><i class="ti ti-trash"></i> Delete Patient</button>
     <span style="margin-left:auto; color:rgba(255,255,255,0.85); font-size:11px;" id="patientBadge"></span>

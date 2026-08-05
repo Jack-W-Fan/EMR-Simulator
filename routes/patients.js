@@ -297,7 +297,7 @@ router.put('/:mr', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
-  const { name, dob, sex, cc, appt, status, phone, ins, allergy, bp, hr, temp, wt } = req.body;
+  const { name, dob, sex, cc, appt, status, phone, ins, allergy, bp, hr, temp, wt, resp_rate, o2_sat, height, bmi } = req.body;
 
   dbRun(
     `UPDATE patients SET
@@ -314,10 +314,15 @@ router.put('/:mr', requireAuth, (req, res) => {
       hr = COALESCE(?, hr),
       temp = COALESCE(?, temp),
       wt = COALESCE(?, wt),
+      resp_rate = COALESCE(?, resp_rate),
+      o2_sat = COALESCE(?, o2_sat),
+      height = COALESCE(?, height),
+      bmi = COALESCE(?, bmi),
       updated_at = datetime('now')
     WHERE mr = ? AND user_id = ?`,
     [name || null, dob || null, sex || null, cc || null, appt || null, status || null,
      phone || null, ins || null, allergy || null, bp || null, hr || null, temp || null, wt || null,
+     resp_rate || null, o2_sat || null, height || null, bmi || null,
      req.params.mr, req.session.userId]
   );
 
@@ -495,17 +500,67 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
     review_of_systems,
     physical_exam,
     assessment,
+    differential_diagnosis,
     plan
   } = req.body;
   const createdBy = req.session.displayName || req.session.username;
 
   const result = dbRun(
-    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, plan, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', plan || '', createdBy]
+    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', differential_diagnosis || '', plan || '', createdBy]
   );
 
   const note = dbGet('SELECT * FROM physician_notes WHERE id = ?', [result.lastInsertRowid]);
   res.status(201).json(note);
+});
+
+router.put('/:mr/physician-notes/:id', requireAuth, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  const {
+    chief_complaint,
+    history_present_illness,
+    past_medical_history,
+    surgical_history,
+    hospitalizations,
+    health_maintenance,
+    family_history,
+    social_history,
+    review_of_systems,
+    physical_exam,
+    assessment,
+    differential_diagnosis,
+    plan
+  } = req.body;
+
+  const result = dbRun(
+    `UPDATE physician_notes SET
+      chief_complaint = COALESCE(?, chief_complaint),
+      history_present_illness = COALESCE(?, history_present_illness),
+      past_medical_history = COALESCE(?, past_medical_history),
+      surgical_history = COALESCE(?, surgical_history),
+      hospitalizations = COALESCE(?, hospitalizations),
+      health_maintenance = COALESCE(?, health_maintenance),
+      family_history = COALESCE(?, family_history),
+      social_history = COALESCE(?, social_history),
+      review_of_systems = COALESCE(?, review_of_systems),
+      physical_exam = COALESCE(?, physical_exam),
+      assessment = COALESCE(?, assessment),
+      differential_diagnosis = COALESCE(?, differential_diagnosis),
+      plan = COALESCE(?, plan),
+      edited_at = datetime('now')
+    WHERE id = ? AND patient_mr = ?`,
+    [chief_complaint, history_present_illness, past_medical_history, surgical_history,
+     hospitalizations, health_maintenance, family_history, social_history,
+     review_of_systems, physical_exam, assessment, differential_diagnosis, plan,
+     req.params.id, req.params.mr]
+  );
+
+  if (result.changes === 0) return res.status(404).json({ error: 'Physician note not found' });
+
+  const note = dbGet('SELECT * FROM physician_notes WHERE id = ?', [req.params.id]);
+  res.json(note);
 });
 
 router.post('/:mr/nursing-notes', requireAuth, (req, res) => {

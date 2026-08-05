@@ -394,3 +394,9 @@ td { padding: 9px 10px; color: var(--text-main); font-size: 12px; overflow: hidd
   .stat-card { min-width: calc(50% - 5px); }
   .patient-layout { flex-direction: column; }
 }
+
+trix-editor { min-height: 80px; font-family: inherit; font-size: 12px; }
+.trix-toolbar { border: 1px solid var(--border); border-radius: 4px 4px 0 0; background: #f9f9f9; }
+.trix-content { border: 1px solid var(--border); border-top: none; border-radius: 0 0 4px 4px; }
+.trix-content ul, .trix-content ol { padding-left: 20px; margin: 4px 0; }
+.trix-content ul ul, .trix-content ol ol, .trix-content ul ol, .trix-content ol ul { padding-left: 20px; margin: 2px 0; }
