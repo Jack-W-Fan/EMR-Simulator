@@ -433,6 +433,9 @@ function initSchema() {
     db.run('ALTER TABLE studies ADD COLUMN result_unlocked INTEGER DEFAULT 0');
   } catch (e) {}
   try {
+    db.run('ALTER TABLE studies ADD COLUMN image_data TEXT');
+  } catch (e) {}
+  try {
     db.run('ALTER TABLE nursing_notes ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
   } catch (e) {}
   try {
