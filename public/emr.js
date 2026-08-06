@@ -960,18 +960,19 @@ function renderSection(sec) {
             </tbody>
           </table>` : '<div class="empty-state"><i class="ti ti-test-pipe"></i>No lab results on file</div>'}
         </div>
+        ${isAdmin ? `
         <div class="info-card-body" style="border-top:1px solid var(--border);">
           <div class="lab-form">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="field"><label>Test Name</label>
                 <select id="labTestName">
+                  <option value="" disabled selected>Select...</option>
                   ${Object.entries(ORDER_CATEGORIES).map(([cat, tests]) => 
                     `<optgroup label="${cat}">${tests.map(t => `<option value="${t}" data-category="${cat}">${t}</option>`).join('')}</optgroup>`
                   ).join('')}
                 </select>
               </div>
               <div class="field"><label>Order Date</label><input type="date" id="labOrderDate" /></div>
-              ${isAdmin ? `
               <div class="field"><label>Result</label><input type="text" id="labResult" placeholder="e.g. Normal" /></div>
               <div class="field"><label>Status</label>
                 <select id="labStatus">
@@ -980,14 +981,14 @@ function renderSection(sec) {
                   <option value="In Progress">In Progress</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
-              </div>` : '<input type="hidden" id="labResult" value="" /><input type="hidden" id="labStatus" value="Pending" />'}
+              </div>
             </div>
             <div class="field"><label>Notes</label><input type="text" id="labNotes" placeholder="Additional notes..." /></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="saveLabResult()"><i class="ti ti-plus"></i> Add Lab Result</button>
             </div>
           </div>
-        </div>
+        </div>` : ''}
       </div>`;
   }
 
@@ -1030,7 +1031,7 @@ function renderSection(sec) {
       ? currentOrders 
       : currentOrders.filter(o => o.type === currentOrderType);
     
-    const typeOptions = ['all', 'labs', 'imaging', 'procedures', 'studies', 'medications', 'other'];
+    const typeOptions = ['all', 'labs', 'imaging', 'procedures', 'studies', 'other'];
     
     el.innerHTML = `
       <div class="info-card">
@@ -1117,6 +1118,7 @@ function renderSection(sec) {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="field"><label>Specialty</label>
                 <select id="consultSpecialty">
+                  <option value="" disabled selected>Select...</option>
                   ${CONSULT_SPECIALTIES.map(s => `<option value="${s}">${s}</option>`).join('')}
                 </select>
               </div>
