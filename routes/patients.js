@@ -470,7 +470,7 @@ router.delete('/:mr', requireAdmin, (req, res) => {
   dbRun('DELETE FROM allergies WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patient_locks WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM interview_history WHERE patient_mr = ?', [mr]);
-  dbRun('DELETE FROM patients WHERE mr = ? AND user_id = ?', [mr, req.session.userId]);
+  dbRun('DELETE FROM patients WHERE mr = ?', [mr]);
   res.json({ success: true });
 });
 
