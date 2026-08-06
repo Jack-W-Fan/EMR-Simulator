@@ -652,7 +652,7 @@ async function openPatient(i) {
     renderPatientInfo(p);
     renderEncounterInfo(p);
 
-    setSection('meds');
+    setSection('note');
     showScreen('patientScreen');
   } catch (e) {
     console.error('Error opening patient:', e);
