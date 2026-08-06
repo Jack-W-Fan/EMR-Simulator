@@ -38,8 +38,14 @@
       <div style="display:flex;gap:8px;">
         <button class="btn btn-outline" onclick="refreshTable()"><i class="ti ti-refresh"></i> Refresh</button>
         <button class="btn btn-green" onclick="openAddModal()"><i class="ti ti-plus"></i> New Patient</button>
+        <!-- Coming Soon: Upload EHR
         <button class="btn btn-blue" onclick="openEhrUploadModal()"><i class="ti ti-file-upload"></i> Upload EHR</button>
+        -->
+        <button class="btn btn-blue" onclick="alert('Coming Soon!')"><i class="ti ti-file-upload"></i> Upload EHR</button>
+        <!-- Coming Soon: Generate Case
         <button class="btn btn-purple" onclick="openGenerateCaseModal()"><i class="ti ti-sparkles"></i> Generate Case</button>
+        -->
+        <button class="btn btn-purple" onclick="alert('Coming Soon!')"><i class="ti ti-sparkles"></i> Generate Case</button>
       </div>
     </div>
 
@@ -99,7 +105,10 @@
     <button class="btn-tab" onclick="goSchedule()"><i class="ti ti-arrow-left"></i> Back</button>
     <button class="btn-tab" onclick="generateReport()"><i class="ti ti-file-download"></i> Generate Report</button>
     <button class="btn-tab" id="addendumBtn" onclick="openAddendumModal()" style="opacity:0.4;pointer-events:none;"><i class="ti ti-file-plus"></i> Add Addendum</button>
+      <!-- Coming Soon: Interview
       <button class="btn-tab" id="interviewBtn" onclick="openInterviewModal()" style="color:#7c3aed;"><i class="ti ti-message-circle"></i> Interview</button>
+      -->
+      <button class="btn-tab" id="interviewBtn" onclick="alert('Coming Soon!')" style="color:#7c3aed;"><i class="ti ti-message-circle"></i> Interview</button>
         <button class="btn-tab" id="deletePatientBtn" onclick="confirmDeletePatient()" style="color:var(--red);"><i class="ti ti-trash"></i> Delete Patient</button>
     <span style="margin-left:auto; color:rgba(255,255,255,0.85); font-size:11px;" id="patientBadge"></span>
   </div>
@@ -111,9 +120,9 @@
     <div class="sec-tab" id="secAllergies"      onclick="setSection('allergies')"><i class="ti ti-alert-triangle"></i>Allergies</div>
     <div class="sec-tab" id="secLabs"           onclick="setSection('labs')">   <i class="ti ti-test-pipe"></i>Lab Results</div>
     <div class="sec-tab" id="secImaging"        onclick="setSection('imaging')"><i class="ti ti-photo-scan"></i>Imaging</div>
+    <div class="sec-tab" id="secStudies"        onclick="setSection('studies')">        <i class="ti ti-report-search"></i>Studies</div>
     <div class="sec-tab" id="secOrders"         onclick="setSection('orders')">         <i class="ti ti-clipboard-plus"></i>Orders</div>
     <div class="sec-tab" id="secConsultations"  onclick="setSection('consultations')">  <i class="ti ti-users"></i>Consultations</div>
-    <div class="sec-tab" id="secStudies"        onclick="setSection('studies')">        <i class="ti ti-report-search"></i>Studies</div>
     <div class="sec-tab" id="secProblems"       onclick="setSection('problems')"><i class="ti ti-list-check"></i>Problems</div>
   </div>
 
@@ -164,6 +173,7 @@
   </div>
 </div>
 
+<!-- Coming Soon: Upload EHR Modal
 <div class="modal-overlay" id="ehrUploadModal">
   <div class="modal">
     <h3><i class="ti ti-file-upload"></i> Upload EHR Chart</h3>
@@ -179,6 +189,7 @@
     </div>
   </div>
 </div>
+-->
 
 <div class="modal-overlay" id="addendumModal">
   <div class="modal" style="width:500px;">
@@ -195,6 +206,7 @@
   </div>
 </div>
 
+<!-- Coming Soon: Generate Case Modal
 <div class="modal-overlay" id="generateCaseModal">
   <div class="modal" style="width:420px;">
     <h3><i class="ti ti-sparkles"></i> AI Case Generation</h3>
@@ -217,6 +229,7 @@
     </div>
   </div>
 </div>
+-->
 
 <div class="modal-overlay" id="profileModal">
   <div class="modal">
@@ -232,6 +245,7 @@
   </div>
 </div>
 
+<!-- Coming Soon: Interview Modal
 <div class="modal-overlay" id="interviewModal" style="width:100%;">
   <div class="modal" style="width:500px; max-height:80vh; padding:20px; display:flex; flex-direction:column;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -249,6 +263,7 @@
     </div>
   </div>
 </div>
+-->
 
 <script src="emr.js"></script>
 </body>

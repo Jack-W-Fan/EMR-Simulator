@@ -48,6 +48,38 @@ const ORDER_CATEGORIES = {
 const CONSULT_SPECIALTIES = ['Cardiology', 'Neurology', 'Orthopedics', 'Gastroenterology', 'Pulmonology', 'Endocrinology', 'Nephrology', 'Psychiatry', 'Dermatology'];
 const STUDY_OPTIONS = ['EKG', 'Echocardiogram', 'Stress Test', 'PFT', 'Holter Monitor', 'Diabetic Eye Exam', 'ABI', 'Sleep Study'];
 
+const ORDER_NAME_OPTIONS = {
+  labs: ORDER_CATEGORIES,
+  imaging: {
+    'Radiology': ['Chest X-Ray (PA)', 'Chest X-Ray (Lateral)', 'Abdominal X-Ray', 'Skull X-Ray', 'Spine X-Ray', 'Extremity X-Ray'],
+    'CT Scan': ['CT Head', 'CT Chest', 'CT Abdomen/Pelvis', 'CT Spine', 'CT Extremity', 'CT Angiography (Chest)', 'CT Angiography (Head/Neck)'],
+    'MRI': ['MRI Brain', 'MRI Spine (Cervical)', 'MRI Spine (Thoracic)', 'MRI Spine (Lumbar)', 'MRI Knee', 'MRI Shoulder', 'MRI Abdomen', 'MRI Chest'],
+    'Ultrasound': ['Abdominal Ultrasound', 'Renal Ultrasound', 'Pelvic Ultrasound', 'OB Ultrasound', 'Thyroid Ultrasound', 'Carotid Ultrasound', 'Echocardiogram (TTE)', 'Echocardiogram (TEE)', 'Doppler Ultrasound (Lower Extremity)', 'Doppler Ultrasound (Upper Extremity)'],
+    'Nuclear Medicine': ['V/Q Scan', 'Thyroid Uptake/Scan', 'Bone Scan', 'PET/CT Scan', 'Myocardial Perfusion Scan (MUGA)', 'HIDA Scan'],
+    'Fluoroscopy': ['Upper GI Series', 'Barium Enema', 'IVP (Intravenous Pyelogram)', 'Myelogram', 'Arthrogram'],
+    'Mammography': ['Screening Mammogram', 'Diagnostic Mammogram', 'Tomosynthesis (3D Mammogram)'],
+    'Interventional': ['Angiography', 'Arteriography', 'Venography', 'Biopsy (Image-Guided)', 'Drainage (Image-Guided)']
+  },
+  procedures: {
+    'Cardiac': ['Echocardiogram (TTE)', 'Echocardiogram (TEE)', 'Stress Test', 'Holter Monitor', 'Cardiac Catheterization', 'Cardioversion', 'Pacemaker Insertion', 'Ablation'],
+    'Pulmonary': ['Pulmonary Function Test (PFT)', 'Bronchoscopy', 'Thoracentesis', 'Chest Tube Insertion', 'Sleep Study (Polysomnography)'],
+    'Gastrointestinal': ['Upper Endoscopy (EGD)', 'Colonoscopy', 'Sigmoidoscopy', 'ERCP', 'PEG Tube Placement', 'Paracentesis'],
+    'Neurological': ['Lumbar Puncture (LP)', 'EEG', 'EMG/Nerve Conduction Study', 'Myelogram', 'Stereotactic Biopsy'],
+    'Orthopedic': ['Joint Aspiration', 'Arthroscopy', 'Fracture Fixation', 'Joint Replacement', 'Spinal Injection (Epidural)', 'Trigger Point Injection'],
+    'Renal/Urologic': ['Cystoscopy', 'Nephrostomy Tube Placement', 'Dialysis Access Creation', 'Ureteral Stent Placement', 'Prostate Biopsy'],
+    'Dermatologic': ['Skin Biopsy (Shave)', 'Skin Biopsy (Punch)', 'Skin Biopsy (Excisional)', 'Cryotherapy', 'Mohs Surgery'],
+    'General Surgery': ['Central Line Placement', 'Arterial Line Placement', 'Chest Tube Placement', 'Laparoscopy', 'Appendectomy', 'Cholecystectomy', 'Hernia Repair', 'Biopsy (Fine Needle Aspiration)', 'Abscess I&D'],
+    'Ophthalmologic': ['Dilated Eye Exam', 'Tonometry', 'Visual Field Test', 'OCT (Optical Coherence Tomography)', 'Fluorescein Angiography', 'Cataract Surgery', 'LASIK']
+  },
+  studies: {
+    'Cardiology': STUDY_OPTIONS,
+    'Neurology': ['EEG', 'EMG/Nerve Conduction Study', 'Evoked Potentials', 'Sleep Study (Polysomnography)'],
+    'Pulmonology': ['Pulmonary Function Test (PFT)', 'Bronchoscopy', 'Sleep Study'],
+    'Ophthalmology': ['Dilated Eye Exam', 'OCT', 'Visual Field Test', 'Fluorescein Angiography', 'Gonioscopy'],
+    'Vascular': ['ABI (Ankle-Brachial Index)', 'Duplex Ultrasound', 'Pulse Volume Recording']
+  }
+};
+
 const STATUS = {
   waiting:   { label:"Waiting",   dotClass:"dot-waiting",   badgeClass:"waiting"   },
   ready:     { label:"Ready",     dotClass:"dot-ready",     badgeClass:"ready"     },
@@ -69,7 +101,8 @@ async function api(method, url, body) {
   return data;
 }
 
-// ── GENERATE CASE MODAL ──
+// ── GENERATE CASE MODAL ── (Coming Soon)
+/*
 function openGenerateCaseModal() {
   document.getElementById('generateCaseModal').classList.add('open');
 }
@@ -94,10 +127,12 @@ async function generateCase() {
     btn.innerHTML = 'Generate Case';
   }
 }
+*/
 
-// ── INTERVIEW CHAT ──
+// ── INTERVIEW CHAT ── (Coming Soon)
 let interviewChatHistory = [];
 
+/*
 async function openInterviewModal() {
   if (!currentPatient) return;
   document.getElementById('interviewChat').innerHTML = '';
@@ -123,7 +158,7 @@ async function closeInterviewModal() {
   if (currentPatient && interviewChatHistory.length > 0) {
     try {
       await api('POST', `/api/patients/${currentPatient.mr}/interview-history`, { chatHistory: interviewChatHistory });
-    } catch { /* ignore save errors */ }
+    } catch { }
   }
 }
 
@@ -190,7 +225,6 @@ async function sendInterviewMessage() {
               bubble.textContent = 'Sorry, there was an error: ' + data.error;
             }
           } catch (e) {
-            // ignore parse errors for partial lines
           }
         }
       }
@@ -220,6 +254,7 @@ function scrollChat() {
   const chat = document.getElementById('interviewChat');
   chat.scrollTop = chat.scrollHeight;
 }
+*/
 
 // ── SESSION CHECK ON LOAD ──
 (async function init() {
@@ -229,7 +264,8 @@ function scrollChat() {
     currentUserEmail = data.user.email;
     currentUserRole = data.user.role || '';
     goSchedule();
-  } catch {
+  } catch (e) {
+    console.error('Auth check failed:', e);
     // not logged in, redirect to index.html
     window.location.href = '/';
   }
@@ -248,6 +284,7 @@ async function goSchedule() {
   const ds = now.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   document.getElementById('scheduleDate').textContent = ds;
   document.getElementById('scheduleDateFooter').textContent = ds;
+  // Always reload patients when returning to schedule to ensure data is fresh
   await loadPatients();
 }
 
@@ -338,7 +375,8 @@ function showTab(el, section) {
 function openAddModal() { document.getElementById('addModal').classList.add('open'); }
 function closeModal()   { document.getElementById('addModal').classList.remove('open'); }
 
-// ── EHR UPLOAD MODAL ──
+// ── EHR UPLOAD MODAL ── (Coming Soon)
+/*
 function openEhrUploadModal() { document.getElementById('ehrUploadModal').classList.add('open'); }
 function closeEhrUploadModal() {
   document.getElementById('ehrUploadModal').classList.remove('open');
@@ -387,6 +425,7 @@ async function uploadEHR() {
     statusDiv.style.color = 'red';
   }
 }
+*/
 
 // ── PROFILE MODAL ──
 function openProfileModal() {
@@ -585,24 +624,44 @@ document.getElementById('profilePicInput')?.addEventListener('change', async fun
 });
 
 async function openPatient(i) {
-  currentPatient = patients[i];
-  const p = currentPatient;
-  currentOrderType = 'all';
-
-  await loadPatientData(p.mr);
-  updatePatientPhoto();
-
-  // Check if patient is already locked (report already generated)
-  addendumEnabled = false;
   try {
-    const lockStatus = await api('GET', `/api/patients/${p.mr}/lock-status`);
-    if (lockStatus.locked) { addendumEnabled = true; }
-  } catch (e) {}
-  updateAddendumBtn();
+    // Ensure patients are loaded
+    if (!patients || patients.length === 0) {
+      await loadPatients();
+    }
+    if (i >= patients.length) return;
 
-  document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
-  document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr + (p.is_generated ? ' · [AI-Generated]' : ' · [Demo]');
+    currentPatient = patients[i];
+    const p = currentPatient;
+    currentOrderType = 'all';
 
+    await loadPatientData(p.mr);
+    updatePatientPhoto();
+
+    // Check if patient is already locked (report already generated)
+    addendumEnabled = false;
+    try {
+      const lockStatus = await api('GET', `/api/patients/${p.mr}/lock-status`);
+      if (lockStatus.locked) { addendumEnabled = true; }
+    } catch (e) {}
+    updateAddendumBtn();
+
+    document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
+    document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr + (p.is_generated ? ' · [AI-Generated]' : ' · [Demo]');
+
+    renderPatientInfo(p);
+    renderEncounterInfo(p);
+
+    setSection('meds');
+    showScreen('patientScreen');
+  } catch (e) {
+    console.error('Error opening patient:', e);
+    // Reload patients if there was an error and try again
+    await loadPatients();
+  }
+}
+
+function renderPatientInfo(p) {
   document.getElementById('patInfo').innerHTML = `
     <div class="info-row"><span class="info-label">Full Name</span><span class="info-value">${p.name}</span></div>
     <div class="info-row"><span class="info-label">Date of Birth</span><span class="info-value">${p.dob}</span></div>
@@ -613,7 +672,9 @@ async function openPatient(i) {
     <div class="info-row"><span class="info-label">Insurance</span><span class="info-value">${p.ins||'—'}</span></div>
     <div class="info-row"><span class="info-label">Drug Allergies</span><span class="info-value" style="color:var(--red)">${currentAllergies.filter(a=>a.type==='drug').map(a=>a.allergen).join(', ')||'None'}</span></div>
   `;
+}
 
+function renderEncounterInfo(p) {
   document.getElementById('encInfo').innerHTML = `
     <div class="info-row"><span class="info-label">Appt Date</span><span class="info-value">${new Date().toLocaleDateString()}</span></div>
     <div class="info-row"><span class="info-label">Appt Time</span><span class="info-value">${p.appt}</span></div>
@@ -629,25 +690,14 @@ async function openPatient(i) {
     <div class="info-row"><span class="info-label">Weight</span><span class="info-value">${p.wt||'—'}</span></div>
     <div class="info-row"><span class="info-label">BMI</span><span class="info-value">${p.bmi||'—'}</span></div>
   `;
-
-  setSection('meds');
-  showScreen('patientScreen');
 }
 
 function updatePatientInfo() {
   if (!currentPatient) return;
   const p = currentPatient;
   updatePatientPhoto();
-  document.getElementById('patInfo').innerHTML = `
-    <div class="info-row"><span class="info-label">Full Name</span><span class="info-value">${p.name}</span></div>
-    <div class="info-row"><span class="info-label">Date of Birth</span><span class="info-value">${p.dob}</span></div>
-    <div class="info-row"><span class="info-label">Age</span><span class="info-value">${p.age || '—'}</span></div>
-    <div class="info-row"><span class="info-label">Sex</span><span class="info-value">${p.sex==='M'?'Male':p.sex==='F'?'Female':'Other'}</span></div>
-    <div class="info-row"><span class="info-label">MR Number</span><span class="info-value" style="color:var(--blue-mid);font-weight:600">${p.mr}</span></div>
-    <div class="info-row"><span class="info-label">Phone</span><span class="info-value">${p.phone||'—'}</span></div>
-    <div class="info-row"><span class="info-label">Insurance</span><span class="info-value">${p.ins||'—'}</span></div>
-    <div class="info-row"><span class="info-label">Drug Allergies</span><span class="info-value" style="color:var(--red)">${currentAllergies.filter(a=>a.type==='drug').map(a=>a.allergen).join(', ')||'None'}</span></div>
-  `;
+  renderPatientInfo(p);
+  renderEncounterInfo(p);
 }
 
 // ── EDIT PATIENT / ENCOUNTER INFO ──
@@ -891,20 +941,21 @@ function renderSection(sec) {
 
   else if (sec === 'labs') {
     const labs = currentOrders.filter(o => o.type === 'labs');
+    const isAdmin = currentUserRole === 'admin';
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-test-pipe"></i> Lab Results</div>
         <div class="info-card-body" style="padding:0">
           ${labs.length ? `
           <table class="med-table">
-            <thead><tr><th>Test Name</th><th>Category</th><th>Result</th><th>Status</th><th>Order Date</th><th style="width:50px"></th></tr></thead>
+            <thead><tr><th>Test Name</th><th>Category</th><th>Result</th><th>Status</th><th>Order Date</th>${isAdmin?'<th style="width:50px"></th>':''}</tr></thead>
             <tbody>${labs.map(l=>`<tr>
               <td style="font-weight:600">${l.name}</td>
               <td>${l.category||'—'}</td>
               <td>${l.result||'—'}</td>
-              <td>${orderStatusBadge(l.status, l.id)}</td>
+              <td>${isAdmin ? orderStatusBadge(l.status, l.id) : (l.status||'Pending')}</td>
               <td>${l.order_date||'—'}</td>
-              <td><button class="remove-btn" onclick="deleteOrder(${l.id})" title="Remove"><i class="ti ti-x"></i></button></td>
+              ${isAdmin?'<td><button class="remove-btn" onclick="deleteOrder('+l.id+')" title="Remove"><i class="ti ti-x"></i></button></td>':''}
             </tr>`).join('')}
             </tbody>
           </table>` : '<div class="empty-state"><i class="ti ti-test-pipe"></i>No lab results on file</div>'}
@@ -920,6 +971,7 @@ function renderSection(sec) {
                 </select>
               </div>
               <div class="field"><label>Order Date</label><input type="date" id="labOrderDate" /></div>
+              ${isAdmin ? `
               <div class="field"><label>Result</label><input type="text" id="labResult" placeholder="e.g. Normal" /></div>
               <div class="field"><label>Status</label>
                 <select id="labStatus">
@@ -928,7 +980,7 @@ function renderSection(sec) {
                   <option value="In Progress">In Progress</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
-              </div>
+              </div>` : '<input type="hidden" id="labResult" value="" /><input type="hidden" id="labStatus" value="Pending" />'}
             </div>
             <div class="field"><label>Notes</label><input type="text" id="labNotes" placeholder="Additional notes..." /></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -941,33 +993,35 @@ function renderSection(sec) {
 
   else if (sec === 'imaging') {
     const imaging = currentImaging;
+    const isAdmin = currentUserRole === 'admin';
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-photo-scan"></i> Imaging</div>
         <div class="info-card-body" style="padding:0">
           ${imaging.length ? `
           <table class="med-table">
-            <thead><tr><th>Label</th><th>Annotations</th><th>Image</th><th style="width:50px"></th></tr></thead>
+            <thead><tr><th>Label</th><th>Annotations</th><th>Image</th>${isAdmin?'<th style="width:50px"></th>':''}</tr></thead>
             <tbody>${imaging.map(img=>`<tr>
               <td style="font-weight:600">${img.label}</td>
               <td>${img.annotations||'—'}</td>
-              <td>${img.image_data ? '<span class="badge complete"><span class="badge-dot dot-complete"></span>Uploaded</span>' : '<span class="badge waiting"><span class="badge-dot dot-waiting"></span>No Image</span>'}</td>
-              <td><button class="remove-btn" onclick="deleteImaging(${img.id})" title="Remove"><i class="ti ti-x"></i></button></td>
+              <td>${img.image_data ? '<img src="' + img.image_data + '" style="max-height:60px;max-width:120px;border-radius:4px;cursor:pointer;" onclick="openImageLightbox(this.src)" title="Click to view full size" />' : '<span class="badge waiting"><span class="badge-dot dot-waiting"></span>No Image</span>'}</td>
+              ${isAdmin?'<td><button class="remove-btn" onclick="deleteImaging('+img.id+')" title="Remove"><i class="ti ti-x"></i></button></td>':''}
             </tr>`).join('')}
             </tbody>
           </table>` : '<div class="empty-state"><i class="ti ti-photo-scan"></i>No imaging on file</div>'}
         </div>
+        ${isAdmin ? `
         <div class="info-card-body" style="border-top:1px solid var(--border);">
           <div class="lab-form">
             <div class="field"><label>Image Label</label><input type="text" id="imgLabel" placeholder="e.g. Chest X-Ray" /></div>
             <div class="field"><label>Annotations</label><input type="text" id="imgAnnotations" placeholder="e.g. Clear lungs" /></div>
-            <div class="field"><label>Upload Image</label><input type="file" id="imgUpload" accept="image/*" onchange="previewImage(event)" /></div>
+            <div class="field"><label>Upload Image</label><input type="file" id="imgUpload" accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp,.svg,.dicom,.dcm" onchange="previewImage(event)" /></div>
             <div id="imgPreview"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="saveImaging()"><i class="ti ti-plus"></i> Add Imaging</button>
             </div>
           </div>
-        </div>
+        </div>` : ''}
       </div>`;
   }
 
@@ -976,7 +1030,7 @@ function renderSection(sec) {
       ? currentOrders 
       : currentOrders.filter(o => o.type === currentOrderType);
     
-    const typeOptions = ['all', 'labs', 'imaging', 'procedures', 'medications', 'other'];
+    const typeOptions = ['all', 'labs', 'imaging', 'procedures', 'studies', 'medications', 'other'];
     
     el.innerHTML = `
       <div class="info-card">
@@ -1002,16 +1056,12 @@ function renderSection(sec) {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="field"><label>Order Type</label>
                 <select id="orderTypeSelect" onchange="updateOrderOptions()">
-                  ${typeOptions.map(t => `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`).join('')}
+                  ${typeOptions.map(t => '<option value="' + t + '">' + t.charAt(0).toUpperCase() + t.slice(1) + '</option>').join('')}
                 </select>
               </div>
               <div class="field"><label>Order Name</label>
                 <select id="orderName" onchange="toggleCustomInput('orderName', 'orderNameCustom')">
                   <option value="">Select...</option>
-                  ${Object.entries(ORDER_CATEGORIES).map(([cat, tests]) => 
-                    `<optgroup label="${cat}">${tests.map(t => `<option value="${t}">${t}</option>`).join('')}</optgroup>`
-                  ).join('')}
-                  <option value="other">Other (custom)</option>
                 </select>
               </div>
               <div class="field" id="orderNameCustomField" style="display:none"><label>Custom Name</label><input type="text" id="orderNameCustom" placeholder="Enter custom order name" /></div>
@@ -1039,6 +1089,7 @@ function renderSection(sec) {
           </div>
         </div>
       </div>`;
+    setTimeout(function() { updateOrderOptions(); }, 0);
   }
 
   else if (sec === 'consultations') {
@@ -1091,24 +1142,26 @@ function renderSection(sec) {
 
   else if (sec === 'studies') {
     const studies = currentStudies;
+    const isAdmin = currentUserRole === 'admin';
     el.innerHTML = `
       <div class="info-card">
         <div class="info-card-header"><i class="ti ti-report-search"></i> Studies</div>
         <div class="info-card-body" style="padding:0">
           ${studies.length ? `
           <table class="med-table">
-            <thead><tr><th>Study Name</th><th>Study Date</th><th>Result</th><th>Status</th><th>Notes</th><th style="width:50px"></th></tr></thead>
+            <thead><tr><th>Study Name</th><th>Study Date</th><th>Result</th><th>Status</th><th>Image</th>${isAdmin?'<th style="width:50px"></th>':''}</tr></thead>
             <tbody>${studies.map(s=>`<tr>
               <td style="font-weight:600">${s.name}</td>
               <td>${s.study_date||'—'}</td>
               <td>${s.result||'—'}</td>
-              <td>${studyStatusBadge(s.status, s.id)}</td>
-              <td>${s.notes||'—'}</td>
-              <td><button class="remove-btn" onclick="deleteStudy(${s.id})" title="Remove"><i class="ti ti-x"></i></button></td>
+              <td>${isAdmin ? studyStatusBadge(s.status, s.id) : (s.status||'Pending')}</td>
+              <td>${s.image_data ? '<img src="' + s.image_data + '" style="max-height:60px;max-width:120px;border-radius:4px;cursor:pointer;" onclick="openImageLightbox(this.src)" title="Click to view full size" />' : '—'}</td>
+              ${isAdmin?'<td><button class="remove-btn" onclick="deleteStudy('+s.id+')" title="Remove"><i class="ti ti-x"></i></button></td>':''}
             </tr>`).join('')}
             </tbody>
           </table>` : '<div class="empty-state"><i class="ti ti-report-search"></i>No studies on file</div>'}
         </div>
+        ${isAdmin ? `
         <div class="info-card-body" style="border-top:1px solid var(--border);">
           <div class="lab-form">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -1130,12 +1183,13 @@ function renderSection(sec) {
               </div>
             </div>
             <div class="field"><label>Result</label><input type="text" id="studyResult" placeholder="e.g. Normal" /></div>
-            <div class="field"><label>Notes</label><input type="text" id="studyNotes" placeholder="Additional notes..." /></div>
+            <div class="field"><label>Upload Image (EKG, X-Ray, etc.)</label><input type="file" id="studyUpload" accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp,.svg,.dicom,.dcm" onchange="previewStudyImage(event)" /></div>
+            <div id="studyPreview"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="addStudy()"><i class="ti ti-plus"></i> Add Study</button>
             </div>
           </div>
-        </div>
+        </div>` : ''}
       </div>`;
   }
 
@@ -1349,7 +1403,27 @@ function toggleCustomInput(selectId, customFieldId) {
 }
 
 function updateOrderOptions() {
-  // Options are now built from ORDER_CATEGORIES in renderSection
+  const typeSelect = document.getElementById('orderTypeSelect');
+  const nameSelect = document.getElementById('orderName');
+  if (!typeSelect || !nameSelect) return;
+
+  const selectedType = typeSelect.value;
+  nameSelect.innerHTML = '<option value="">Select...</option>';
+
+  if (selectedType === 'all' || selectedType === 'medications' || selectedType === 'other') {
+    nameSelect.innerHTML += '<option value="other">Other (custom)</option>';
+  } else {
+    const categories = ORDER_NAME_OPTIONS[selectedType];
+    if (categories) {
+      for (const [cat, items] of Object.entries(categories)) {
+        nameSelect.innerHTML += '<optgroup label="' + cat + '">' + items.map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('') + '</optgroup>';
+      }
+    }
+    nameSelect.innerHTML += '<option value="other">Other (custom)</option>';
+  }
+
+  var customField = document.getElementById('orderNameCustomField');
+  if (customField) customField.style.display = 'none';
 }
 
 // ── PHYSICIAN NOTES ──
@@ -2249,9 +2323,10 @@ async function addOrder() {
   let name = nameSelect;
   let category = null;
 
-  // Find category from ORDER_CATEGORIES
+  // Find category from ORDER_NAME_OPTIONS based on selected type
   if (nameSelect && nameSelect !== 'other') {
-    for (const [cat, items] of Object.entries(ORDER_CATEGORIES)) {
+    const typeCategories = ORDER_NAME_OPTIONS[typeSelect] || ORDER_NAME_OPTIONS.labs;
+    for (const [cat, items] of Object.entries(typeCategories)) {
       if (items.includes(nameSelect)) {
         category = cat;
         break;
@@ -2398,8 +2473,9 @@ async function addStudy() {
       study_date: document.getElementById('studyDate')?.value || null,
       result: document.getElementById('studyResult')?.value || '',
       status: document.getElementById('studyStatus')?.value,
-      notes: document.getElementById('studyNotes')?.value || '',
+      image_data: currentStudyImageData || '',
     });
+    currentStudyImageData = '';
     await loadPatientData(currentPatient.mr);
     renderSection('studies');
   } catch (e) {
@@ -2420,6 +2496,7 @@ async function deleteStudy(id) {
 
 // ── IMAGE PREVIEW ──
 let currentImageData = '';
+let currentStudyImageData = '';
 
 function previewImage(e) {
   const file = e.target.files[0];
@@ -2433,6 +2510,28 @@ function previewImage(e) {
     }
   };
   reader.readAsDataURL(file);
+}
+
+function previewStudyImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    currentStudyImageData = ev.target.result;
+    const preview = document.getElementById('studyPreview');
+    if (preview) {
+      preview.innerHTML = `<img src="${ev.target.result}" style="max-height:200px;max-width:100%;border-radius:4px;cursor:pointer;" onclick="openImageLightbox(this.src)" title="Click to view full size" />`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function openImageLightbox(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;';
+  overlay.innerHTML = `<img src="${src}" style="max-width:95vw;max-height:95vh;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);" />`;
+  overlay.addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
 }
 
 async function saveImaging() {

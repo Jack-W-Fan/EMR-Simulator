@@ -27,7 +27,13 @@ router.post('/register', (req, res) => {
   req.session.email = email;
   req.session.displayName = displayName || email;
 
-  res.json({ success: true, user: { email, displayName: displayName || email } });
+  req.session.save((err) => {
+    if (err) {
+      console.error('Error saving session:', err);
+    }
+    console.log('POST /api/auth/register - Session created:', req.session);
+    res.json({ success: true, user: { email, displayName: displayName || email } });
+  });
 });
 
 router.post('/login', (req, res) => {
@@ -50,7 +56,13 @@ router.post('/login', (req, res) => {
   req.session.email = user.email;
   req.session.displayName = user.display_name || user.email;
 
-  res.json({ success: true, user: { email: user.email, displayName: user.display_name || user.email } });
+  req.session.save((err) => {
+    if (err) {
+      console.error('Error saving session:', err);
+    }
+    console.log('POST /api/auth/login - Session created:', req.session);
+    res.json({ success: true, user: { email: user.email, displayName: user.display_name || user.email } });
+  });
 });
 
 router.post('/logout', (req, res) => {
@@ -60,6 +72,7 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/me', (req, res) => {
+  console.log('GET /api/auth/me - Session:', req.session);
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

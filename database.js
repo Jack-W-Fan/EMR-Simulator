@@ -202,6 +202,7 @@ function initSchema() {
       status TEXT DEFAULT 'Final',
       ordered_by TEXT,
       notes TEXT,
+      image_data TEXT,
       is_shared INTEGER DEFAULT 0,
       result_unlocked INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
@@ -351,6 +352,45 @@ function initSchema() {
       FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS patient_vitals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      bp TEXT,
+      hr TEXT,
+      temp TEXT,
+      wt TEXT,
+      resp_rate TEXT,
+      o2_sat TEXT,
+      height TEXT,
+      bmi TEXT,
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(patient_mr, user_id),
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS patient_overrides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_mr TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      name TEXT,
+      dob TEXT,
+      sex TEXT,
+      phone TEXT,
+      ins TEXT,
+      allergy TEXT,
+      cc TEXT,
+      appt TEXT,
+      sched TEXT,
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(patient_mr, user_id),
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
 
   // Add columns if they don't exist (for existing databases)
   try {
@@ -428,17 +468,17 @@ function seedData() {
   const count = dbGet('SELECT COUNT(*) AS cnt FROM patients');
   if (count && count.cnt > 0) return;
 
-  const demoUser = dbGet('SELECT id FROM users WHERE email = ?', ['demo@gmail.com']);
+  const demoUser = dbGet('SELECT id FROM users WHERE email = ?', ['Admin@gmail.com']);
   let userId;
   if (demoUser) {
     userId = demoUser.id;
     // Update demo user to admin role
-    dbRun('UPDATE users SET role = ? WHERE email = ?', ['admin', 'demo@gmail.com']);
+    dbRun('UPDATE users SET role = ? WHERE email = ?', ['admin', 'Admin@gmail.com']);
   } else {
     const bcrypt = require('bcryptjs');
-    const hash = bcrypt.hashSync('demo123', 10);
-    dbRun('INSERT INTO users (email, password_hash, display_name, role) VALUES (?, ?, ?, ?)', ['demo@gmail.com', hash, 'Dr. Demo', 'admin']);
-    const newUser = dbGet('SELECT id FROM users WHERE email = ?', ['demo@gmail.com']);
+    const hash = bcrypt.hashSync('SecureP@ssw0rd!', 10);
+    dbRun('INSERT INTO users (email, password_hash, display_name, role) VALUES (?, ?, ?, ?)', ['Admin@gmail.com', hash, 'Dr. Demo', 'admin']);
+    const newUser = dbGet('SELECT id FROM users WHERE email = ?', ['Admin@gmail.com']);
     userId = newUser ? newUser.id : null;
   }
 

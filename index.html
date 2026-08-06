@@ -57,10 +57,24 @@
           <p>To deliver medical solutions through the collaboration of technology and healthcare.</p>
         </article>
 
-        <article>
-          <h2>The Team</h2>
-          <p>A group of students passionate about building technology that improves lives and supports healthcare.</p>
-        </article>
+        <div class="team-tabs">
+          <div class="team-tab-buttons">
+            <button class="team-tab active" onclick="switchTeamTab('old')">Old Team</button>
+            <button class="team-tab" onclick="switchTeamTab('new')">New Team</button>
+          </div>
+          <div class="team-tab-content" id="teamTabOld">
+            <article>
+              <h2>Old Team</h2>
+              <p>A group of students passionate about building technology that improves lives and supports healthcare.</p>
+            </article>
+          </div>
+          <div class="team-tab-content" id="teamTabNew" style="display:none;">
+            <article>
+              <h2>New Team</h2>
+              <p>The next generation of CNU Tech students continuing to innovate in healthcare technology.</p>
+            </article>
+          </div>
+        </div>
       </div>
     </section>
 

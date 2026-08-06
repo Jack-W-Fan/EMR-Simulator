@@ -174,6 +174,18 @@ programCards.forEach((card) => {
   });
 });
 
+function switchTeamTab(tab) {
+  document.querySelectorAll('.team-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.team-tab-content').forEach(c => c.style.display = 'none');
+  if (tab === 'old') {
+    document.querySelector('.team-tab:nth-child(1)').classList.add('active');
+    document.getElementById('teamTabOld').style.display = '';
+  } else {
+    document.querySelector('.team-tab:nth-child(2)').classList.add('active');
+    document.getElementById('teamTabNew').style.display = '';
+  }
+}
+
 // Check if user is already logged in on page load
 (async function checkAuth() {
   try {

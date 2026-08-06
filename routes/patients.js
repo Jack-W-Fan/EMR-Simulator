@@ -28,28 +28,26 @@ function getPatientClinicalData(mr, userId) {
 
   // For orders (labs):
   // - Admin sees all shared orders with results
-  // - Students see only their own orders; results hidden until report generated
+  // - Students see their own orders PLUS shared admin orders; own results hidden until report generated
   let ordersQuery;
   if (isAdmin) {
     ordersQuery = 'SELECT * FROM orders WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
   } else if (patientLocked) {
-    ordersQuery = 'SELECT id, patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, CASE WHEN result_unlocked = 1 THEN result ELSE NULL END as result FROM orders WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+    ordersQuery = 'SELECT id, patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, CASE WHEN is_shared = 1 THEN result WHEN result_unlocked = 1 THEN result ELSE NULL END as result FROM orders WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
   } else {
-    ordersQuery = 'SELECT id, patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, NULL as result FROM orders WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+    ordersQuery = 'SELECT id, patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, CASE WHEN is_shared = 1 THEN result ELSE NULL END as result FROM orders WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
   }
 
-  // For studies (imaging):
+  // For studies:
   // - Admin sees all shared studies
-  // - Students see only their own studies until they generate report, then see their studies with results
+  // - Students see their own studies PLUS shared admin studies; own results hidden until report generated
   let studiesQuery;
   if (isAdmin) {
     studiesQuery = 'SELECT * FROM studies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
   } else if (patientLocked) {
-    // After report generation, show student's studies with results
-    studiesQuery = 'SELECT id, patient_mr, user_id, name, study_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, CASE WHEN result_unlocked = 1 THEN result ELSE NULL END as result FROM studies WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+    studiesQuery = 'SELECT id, patient_mr, user_id, name, study_date, status, ordered_by, notes, image_data, is_shared, result_unlocked, created_at, CASE WHEN is_shared = 1 THEN result WHEN result_unlocked = 1 THEN result ELSE NULL END as result FROM studies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
   } else {
-    // Before report generation, show only student's studies without results
-    studiesQuery = 'SELECT id, patient_mr, user_id, name, study_date, status, ordered_by, notes, is_shared, result_unlocked, created_at, NULL as result FROM studies WHERE patient_mr = ? AND user_id = ? ORDER BY id DESC';
+    studiesQuery = 'SELECT id, patient_mr, user_id, name, study_date, status, ordered_by, notes, image_data, is_shared, result_unlocked, created_at, CASE WHEN is_shared = 1 THEN result ELSE NULL END as result FROM studies WHERE patient_mr = ? AND (user_id = ? OR is_shared = 1) ORDER BY id DESC';
   }
 
   return {
@@ -157,13 +155,15 @@ router.post('/:mr/orders', requireAuth, (req, res) => {
   // Admin's orders are shared so students can match against them
   const isAdminUser = user && user.role === 'admin';
   const isShared = isAdminUser ? 1 : 0;
+  // Only admin can set results; non-admin always gets empty result
+  const finalResult = isAdminUser ? (resultValue || '') : '';
   // If admin sets a result, it's immediately unlocked (visible to admin, used for matching)
-  const unlocked = resultValue ? 1 : 0;
+  const unlocked = finalResult ? 1 : 0;
 
   const orderedBy = req.session.displayName || req.session.username;
   const insertResult = dbRun(
     'INSERT INTO orders (patient_mr, user_id, type, category, name, priority, order_date, status, ordered_by, notes, is_shared, result, result_unlocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, type, category || null, name, priority || 'Routine', order_date || null, status || 'Pending', orderedBy, notes || '', isShared, resultValue || '', unlocked]
+    [req.params.mr, req.session.userId, type, category || null, name, priority || 'Routine', order_date || null, status || 'Pending', orderedBy, notes || '', isShared, finalResult, unlocked]
   );
 
   const order = dbGet('SELECT * FROM orders WHERE id = ?', [insertResult.lastInsertRowid]);
@@ -263,13 +263,18 @@ router.post('/:mr/studies', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'Patient is locked. Cannot make changes after generating report.' });
   }
 
-  const { name, study_date, result, status, notes } = req.body;
+  const { name, study_date, result, status, notes, image_data } = req.body;
   if (!name) return res.status(400).json({ error: 'Study name is required.' });
+
+  const isAdminUser = user && user.role === 'admin';
+  const isShared = isAdminUser ? 1 : 0;
+  const finalResult = isAdminUser ? (result || '') : '';
+  const unlocked = finalResult ? 1 : 0;
 
   const orderedBy = req.session.displayName || req.session.username;
   const studyResult = dbRun(
-    'INSERT INTO studies (patient_mr, user_id, name, study_date, result, status, ordered_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, name, study_date || null, result || '', status || 'Pending', orderedBy, notes || '']
+    'INSERT INTO studies (patient_mr, user_id, name, study_date, result, status, ordered_by, notes, image_data, is_shared, result_unlocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, name, study_date || null, finalResult, status || 'Pending', orderedBy, notes || '', image_data || '', isShared, unlocked]
   );
 
   const study = dbGet('SELECT * FROM studies WHERE id = ?', [studyResult.lastInsertRowid]);
@@ -290,7 +295,41 @@ router.get('/:mr', requireAuth, (req, res) => {
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
   const clinical = getPatientClinicalData(req.params.mr, req.session.userId);
-  res.json({ ...patient, ...clinical });
+
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  const isAdmin = user && user.role === 'admin';
+
+  let userVitals = null;
+  let userOverrides = null;
+  if (!isAdmin) {
+    userVitals = dbGet('SELECT * FROM patient_vitals WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+    userOverrides = dbGet('SELECT * FROM patient_overrides WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+  }
+
+  const result = { ...patient, ...clinical };
+  if (userOverrides) {
+    if (userOverrides.name) result.name = userOverrides.name;
+    if (userOverrides.dob) result.dob = userOverrides.dob;
+    if (userOverrides.sex) result.sex = userOverrides.sex;
+    if (userOverrides.phone) result.phone = userOverrides.phone;
+    if (userOverrides.ins) result.ins = userOverrides.ins;
+    if (userOverrides.allergy) result.allergy = userOverrides.allergy;
+    if (userOverrides.cc) result.cc = userOverrides.cc;
+    if (userOverrides.appt) result.appt = userOverrides.appt;
+    if (userOverrides.sched) result.sched = userOverrides.sched;
+  }
+  if (userVitals) {
+    if (userVitals.bp) result.bp = userVitals.bp;
+    if (userVitals.hr) result.hr = userVitals.hr;
+    if (userVitals.temp) result.temp = userVitals.temp;
+    if (userVitals.wt) result.wt = userVitals.wt;
+    if (userVitals.resp_rate) result.resp_rate = userVitals.resp_rate;
+    if (userVitals.o2_sat) result.o2_sat = userVitals.o2_sat;
+    if (userVitals.height) result.height = userVitals.height;
+    if (userVitals.bmi) result.bmi = userVitals.bmi;
+  }
+
+  res.json(result);
 });
 
 router.put('/:mr', requireAuth, (req, res) => {
@@ -299,34 +338,107 @@ router.put('/:mr', requireAuth, (req, res) => {
 
   const { name, dob, sex, cc, appt, status, phone, ins, allergy, bp, hr, temp, wt, resp_rate, o2_sat, height, bmi } = req.body;
 
-  dbRun(
-    `UPDATE patients SET
-      name = COALESCE(?, name),
-      dob = COALESCE(?, dob),
-      sex = COALESCE(?, sex),
-      cc = COALESCE(?, cc),
-      appt = COALESCE(?, appt),
-      status = COALESCE(?, status),
-      phone = COALESCE(?, phone),
-      ins = COALESCE(?, ins),
-      allergy = COALESCE(?, allergy),
-      bp = COALESCE(?, bp),
-      hr = COALESCE(?, hr),
-      temp = COALESCE(?, temp),
-      wt = COALESCE(?, wt),
-      resp_rate = COALESCE(?, resp_rate),
-      o2_sat = COALESCE(?, o2_sat),
-      height = COALESCE(?, height),
-      bmi = COALESCE(?, bmi),
-      updated_at = datetime('now')
-    WHERE mr = ? AND user_id = ?`,
-    [name || null, dob || null, sex || null, cc || null, appt || null, status || null,
-     phone || null, ins || null, allergy || null, bp || null, hr || null, temp || null, wt || null,
-     resp_rate || null, o2_sat || null, height || null, bmi || null,
-     req.params.mr, req.session.userId]
-  );
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  const isAdmin = user && user.role === 'admin';
+
+  if (isAdmin) {
+    dbRun(
+      `UPDATE patients SET
+        name = COALESCE(?, name),
+        dob = COALESCE(?, dob),
+        sex = COALESCE(?, sex),
+        cc = COALESCE(?, cc),
+        appt = COALESCE(?, appt),
+        status = COALESCE(?, status),
+        phone = COALESCE(?, phone),
+        ins = COALESCE(?, ins),
+        allergy = COALESCE(?, allergy),
+        bp = COALESCE(?, bp),
+        hr = COALESCE(?, hr),
+        temp = COALESCE(?, temp),
+        wt = COALESCE(?, wt),
+        resp_rate = COALESCE(?, resp_rate),
+        o2_sat = COALESCE(?, o2_sat),
+        height = COALESCE(?, height),
+        bmi = COALESCE(?, bmi),
+        updated_at = datetime('now')
+      WHERE mr = ?`,
+      [name || null, dob || null, sex || null, cc || null, appt || null, status || null,
+       phone || null, ins || null, allergy || null, bp || null, hr || null, temp || null, wt || null,
+       resp_rate || null, o2_sat || null, height || null, bmi || null,
+       req.params.mr]
+    );
+  } else {
+    // Save patient info overrides (name, dob, sex, etc.) per-user
+    dbRun(
+      `INSERT INTO patient_overrides (patient_mr, user_id, name, dob, sex, phone, ins, allergy, cc, appt, sched, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(patient_mr, user_id) DO UPDATE SET
+         name = COALESCE(?, name),
+         dob = COALESCE(?, dob),
+         sex = COALESCE(?, sex),
+         phone = COALESCE(?, phone),
+         ins = COALESCE(?, ins),
+         allergy = COALESCE(?, allergy),
+         cc = COALESCE(?, cc),
+         appt = COALESCE(?, appt),
+         sched = COALESCE(?, sched),
+         updated_at = datetime('now')`,
+      [req.params.mr, req.session.userId,
+       name || null, dob || null, sex || null, phone || null, ins || null, allergy || null, cc || null, appt || null, req.body.sched || null,
+       name || null, dob || null, sex || null, phone || null, ins || null, allergy || null, cc || null, appt || null, req.body.sched || null]
+    );
+
+    // Save vitals overrides per-user
+    if (bp || hr || temp || wt || resp_rate || o2_sat || height || bmi) {
+      dbRun(
+        `INSERT INTO patient_vitals (patient_mr, user_id, bp, hr, temp, wt, resp_rate, o2_sat, height, bmi, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(patient_mr, user_id) DO UPDATE SET
+           bp = COALESCE(?, bp),
+           hr = COALESCE(?, hr),
+           temp = COALESCE(?, temp),
+           wt = COALESCE(?, wt),
+           resp_rate = COALESCE(?, resp_rate),
+           o2_sat = COALESCE(?, o2_sat),
+           height = COALESCE(?, height),
+           bmi = COALESCE(?, bmi),
+           updated_at = datetime('now')`,
+        [req.params.mr, req.session.userId,
+         bp || null, hr || null, temp || null, wt || null, resp_rate || null, o2_sat || null, height || null, bmi || null,
+         bp || null, hr || null, temp || null, wt || null, resp_rate || null, o2_sat || null, height || null, bmi || null]
+      );
+    }
+  }
 
   const updated = dbGet('SELECT * FROM patients WHERE mr = ?', [req.params.mr]);
+
+  if (!isAdmin) {
+    const uv = dbGet('SELECT * FROM patient_vitals WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+    const uo = dbGet('SELECT * FROM patient_overrides WHERE patient_mr = ? AND user_id = ?', [req.params.mr, req.session.userId]);
+    if (uo) {
+      if (uo.name) updated.name = uo.name;
+      if (uo.dob) updated.dob = uo.dob;
+      if (uo.sex) updated.sex = uo.sex;
+      if (uo.phone) updated.phone = uo.phone;
+      if (uo.ins) updated.ins = uo.ins;
+      if (uo.allergy) updated.allergy = uo.allergy;
+      if (uo.cc) updated.cc = uo.cc;
+      if (uo.appt) updated.appt = uo.appt;
+      if (uo.sched) updated.sched = uo.sched;
+    }
+    if (uv) {
+      if (uv.bp) updated.bp = uv.bp;
+      if (uv.hr) updated.hr = uv.hr;
+      if (uv.temp) updated.temp = uv.temp;
+      if (uv.wt) updated.wt = uv.wt;
+      if (uv.resp_rate) updated.resp_rate = uv.resp_rate;
+      if (uv.o2_sat) updated.o2_sat = uv.o2_sat;
+      if (uv.height) updated.height = uv.height;
+      if (uv.bmi) updated.bmi = uv.bmi;
+    }
+  }
+
   res.json(updated);
 });
 
@@ -505,9 +617,12 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
   } = req.body;
   const createdBy = req.session.displayName || req.session.username;
 
+  const isAdminUser = user && user.role === 'admin';
+  const isShared = isAdminUser ? 1 : 0;
+
   const result = dbRun(
-    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', differential_diagnosis || '', plan || '', createdBy]
+    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', differential_diagnosis || '', plan || '', createdBy, isShared]
   );
 
   const note = dbGet('SELECT * FROM physician_notes WHERE id = ?', [result.lastInsertRowid]);
@@ -617,9 +732,12 @@ router.post('/:mr/imaging', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Label is required.' });
   }
 
+  const isAdminUser = user && user.role === 'admin';
+  const isShared = isAdminUser ? 1 : 0;
+
   const result = dbRun(
-    'INSERT INTO imaging (patient_mr, user_id, label, image_data, annotations) VALUES (?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, label, image_data || '', annotations || '']
+    'INSERT INTO imaging (patient_mr, user_id, label, image_data, annotations, is_shared) VALUES (?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, label, image_data || '', annotations || '', isShared]
   );
 
   const imaging = dbGet('SELECT * FROM imaging WHERE id = ?', [result.lastInsertRowid]);
