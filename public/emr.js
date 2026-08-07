@@ -708,13 +708,13 @@ function toggleEditPatient() {
   body.classList.add('editing');
   document.getElementById('patInfo').insertAdjacentHTML('afterend', `
     <div class="edit-form" id="patientEditForm">
-      <div class="edit-row"><label>Full Name</label><input type="text" id="editName" value="${p.name||''}" /></div>
-      <div class="edit-row"><label>Date of Birth</label><input type="text" id="editDob" value="${p.dob||''}" /></div>
+      <div class="edit-row"><label>Full Name</label><input type="text" autocomplete="off" id="editName" value="${p.name||''}" /></div>
+      <div class="edit-row"><label>Date of Birth</label><input type="text" autocomplete="off" id="editDob" value="${p.dob||''}" /></div>
       <div class="edit-row"><label>Sex</label>
         <select id="editSex"><option value="M" ${p.sex==='M'?'selected':''}>Male</option><option value="F" ${p.sex==='F'?'selected':''}>Female</option><option value="O" ${p.sex==='O'?'selected':''}>Other</option></select>
       </div>
-      <div class="edit-row"><label>Phone</label><input type="text" id="editPhone" value="${p.phone||''}" /></div>
-      <div class="edit-row"><label>Insurance</label><input type="text" id="editIns" value="${p.ins||''}" /></div>
+      <div class="edit-row"><label>Phone</label><input type="text" autocomplete="off" id="editPhone" value="${p.phone||''}" /></div>
+      <div class="edit-row"><label>Insurance</label><input type="text" autocomplete="off" id="editIns" value="${p.ins||''}" /></div>
       <div class="edit-actions">
         <button class="btn btn-outline" onclick="cancelEdit('patient')">Cancel</button>
         <button class="btn btn-blue" onclick="savePatientEdit()"><i class="ti ti-check"></i> Save</button>
@@ -750,17 +750,17 @@ function toggleEditEncounter() {
   body.classList.add('editing');
   document.getElementById('encInfo').insertAdjacentHTML('beforeend', `
     <div class="edit-form" id="encounterEditForm">
-      <div class="edit-row"><label>Appt Time</label><input type="text" id="editAppt" value="${p.appt||''}" /></div>
-      <div class="edit-row"><label>Physician</label><input type="text" id="editSched" value="${p.sched||''}" /></div>
-      <div class="edit-row"><label>Chief Complaint</label><input type="text" id="editCc" value="${p.cc||''}" /></div>
-      <div class="edit-row"><label>Blood Pressure</label><input type="text" id="editBp" value="${p.bp||''}" /></div>
-      <div class="edit-row"><label>Pulse Rate</label><input type="text" id="editHr" value="${p.hr||''}" /></div>
-      <div class="edit-row"><label>Temperature</label><input type="text" id="editTemp" value="${p.temp||''}" /></div>
-      <div class="edit-row"><label>Respiratory Rate</label><input type="text" id="editRespRate" value="${p.resp_rate||''}" /></div>
-      <div class="edit-row"><label>O2 Saturation</label><input type="text" id="editO2Sat" value="${p.o2_sat||''}" /></div>
-      <div class="edit-row"><label>Height</label><input type="text" id="editHeight" value="${p.height||''}" /></div>
-      <div class="edit-row"><label>Weight</label><input type="text" id="editWt" value="${p.wt||''}" /></div>
-      <div class="edit-row"><label>BMI</label><input type="text" id="editBmi" value="${p.bmi||''}" /></div>
+      <div class="edit-row"><label>Appt Time</label><input type="text" autocomplete="off" id="editAppt" value="${p.appt||''}" /></div>
+      <div class="edit-row"><label>Physician</label><input type="text" autocomplete="off" id="editSched" value="${p.sched||''}" /></div>
+      <div class="edit-row"><label>Chief Complaint</label><input type="text" autocomplete="off" id="editCc" value="${p.cc||''}" /></div>
+      <div class="edit-row"><label>Blood Pressure</label><input type="text" autocomplete="off" id="editBp" value="${p.bp||''}" /></div>
+      <div class="edit-row"><label>Pulse Rate</label><input type="text" autocomplete="off" id="editHr" value="${p.hr||''}" /></div>
+      <div class="edit-row"><label>Temperature</label><input type="text" autocomplete="off" id="editTemp" value="${p.temp||''}" /></div>
+      <div class="edit-row"><label>Respiratory Rate</label><input type="text" autocomplete="off" id="editRespRate" value="${p.resp_rate||''}" /></div>
+      <div class="edit-row"><label>O2 Saturation</label><input type="text" autocomplete="off" id="editO2Sat" value="${p.o2_sat||''}" /></div>
+      <div class="edit-row"><label>Height</label><input type="text" autocomplete="off" id="editHeight" value="${p.height||''}" /></div>
+      <div class="edit-row"><label>Weight</label><input type="text" autocomplete="off" id="editWt" value="${p.wt||''}" /></div>
+      <div class="edit-row"><label>BMI</label><input type="text" autocomplete="off" id="editBmi" value="${p.bmi||''}" /></div>
       <div class="edit-actions">
         <button class="btn btn-outline" onclick="cancelEdit('encounter')">Cancel</button>
         <button class="btn btn-blue" onclick="saveEncounterEdit()"><i class="ti ti-check"></i> Save</button>
@@ -861,7 +861,7 @@ function renderSection(sec) {
           <table class="med-table">
             <thead><tr><th>Type</th><th>Medication</th><th>Dose</th><th>Frequency</th><th>Route</th><th>Start Date</th><th>Prescriber</th><th style="width:50px"></th></tr></thead>
             <tbody>${meds.map(m=>`<tr>
-              <td><span class="badge ${m.type==='prescribed'?'complete':'ready'}"><span class="badge-dot ${m.type==='prescribed'?'dot-complete':'dot-ready'}"></span>${m.type==='prescribed'?'New Prescription':'Existing'}</span></td>
+              <td><span class="badge ${m.type==='prescribed'?'complete':m.type==='otc'?'ready':m.type==='supplement'?'pending':'default'}"><span class="badge-dot ${m.type==='prescribed'?'dot-complete':m.type==='otc'?'dot-ready':m.type==='supplement'?'dot-pending':'dot-default'}"></span>${m.type==='prescribed'?'New Prescription':m.type==='otc'?'Over the Counter':m.type==='supplement'?'Supplement':'Existing'}</span></td>
               <td style="font-weight:600">${m.name}</td>
               <td>${m.dose||'—'}</td>
               <td>${m.freq||'—'}</td>
@@ -880,14 +880,16 @@ function renderSection(sec) {
                 <select id="medType" onchange="toggleMedTypeFields()">
                   <option value="existing">Existing Medication</option>
                   <option value="prescribed">New Prescription</option>
+                  <option value="otc">Over the Counter</option>
+                  <option value="supplement">Supplement</option>
                 </select>
               </div>
-              <div class="field"><label>Medication Name</label><input type="text" id="medName" placeholder="e.g. Lisinopril" /></div>
-              <div class="field"><label>Dose</label><input type="text" id="medDose" placeholder="e.g. 10mg" /></div>
-              <div class="field"><label>Frequency</label><input type="text" id="medFreq" placeholder="e.g. Once daily" /></div>
-              <div class="field"><label>Route</label><input type="text" id="medRoute" placeholder="e.g. Oral" /></div>
+              <div class="field"><label>Medication Name</label><input type="text" autocomplete="off" id="medName" placeholder="e.g. Lisinopril" /></div>
+              <div class="field"><label>Dose</label><input type="text" autocomplete="off" id="medDose" placeholder="e.g. 10mg" /></div>
+              <div class="field"><label>Frequency</label><input type="text" autocomplete="off" id="medFreq" placeholder="e.g. Once daily" /></div>
+              <div class="field"><label>Route</label><input type="text" autocomplete="off" id="medRoute" placeholder="e.g. Oral" /></div>
               <div class="field"><label>Start Date</label><input type="date" id="medStart" /></div>
-              <div class="field"><label>Prescriber</label><input type="text" id="medPrescriber" placeholder="e.g. Dr. Smith" /></div>
+              <div class="field"><label>Prescriber</label><input type="text" autocomplete="off" id="medPrescriber" placeholder="e.g. Dr. Smith" /></div>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="addMedication()"><i class="ti ti-plus"></i> Add Medication</button>
@@ -919,7 +921,7 @@ function renderSection(sec) {
         <div class="info-card-body" style="border-top:1px solid var(--border);">
           <div class="lab-form">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="field"><label>Allergen</label><input type="text" id="allergyAllergen" placeholder="e.g. Penicillin" /></div>
+              <div class="field"><label>Allergen</label><input type="text" autocomplete="off" id="allergyAllergen" placeholder="e.g. Penicillin" /></div>
               <div class="field"><label>Type</label>
                 <select id="allergyType">
                   <option value="drug">Drug</option>
@@ -928,8 +930,8 @@ function renderSection(sec) {
                   <option value="other">Other</option>
                 </select>
               </div>
-              <div class="field"><label>Reaction</label><input type="text" id="allergyReaction" placeholder="e.g. Hives, rash" /></div>
-              <div class="field"><label>First Encountered</label><input type="text" id="allergyFirstEncounter" placeholder="e.g. 2020" /></div>
+              <div class="field"><label>Reaction</label><input type="text" autocomplete="off" id="allergyReaction" placeholder="e.g. Hives, rash" /></div>
+              <div class="field"><label>First Encountered</label><input type="text" autocomplete="off" id="allergyFirstEncounter" placeholder="e.g. 2020" /></div>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="addAllergy()"><i class="ti ti-plus"></i> Add Allergy</button>
@@ -973,7 +975,7 @@ function renderSection(sec) {
                 </select>
               </div>
               <div class="field"><label>Order Date</label><input type="date" id="labOrderDate" /></div>
-              <div class="field"><label>Result</label><input type="text" id="labResult" placeholder="e.g. Normal" /></div>
+              <div class="field"><label>Result</label><input type="text" autocomplete="off" id="labResult" placeholder="e.g. Normal" /></div>
               <div class="field"><label>Status</label>
                 <select id="labStatus">
                   <option value="Completed">Completed</option>
@@ -983,7 +985,7 @@ function renderSection(sec) {
                 </select>
               </div>
             </div>
-            <div class="field"><label>Notes</label><input type="text" id="labNotes" placeholder="Additional notes..." /></div>
+            <div class="field"><label>Notes</label><input type="text" autocomplete="off" id="labNotes" placeholder="Additional notes..." /></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="saveLabResult()"><i class="ti ti-plus"></i> Add Lab Result</button>
             </div>
@@ -1014,8 +1016,8 @@ function renderSection(sec) {
         ${isAdmin ? `
         <div class="info-card-body" style="border-top:1px solid var(--border);">
           <div class="lab-form">
-            <div class="field"><label>Image Label</label><input type="text" id="imgLabel" placeholder="e.g. Chest X-Ray" /></div>
-            <div class="field"><label>Annotations</label><input type="text" id="imgAnnotations" placeholder="e.g. Clear lungs" /></div>
+            <div class="field"><label>Image Label</label><input type="text" autocomplete="off" id="imgLabel" placeholder="e.g. Chest X-Ray" /></div>
+            <div class="field"><label>Annotations</label><input type="text" autocomplete="off" id="imgAnnotations" placeholder="e.g. Clear lungs" /></div>
             <div class="field"><label>Upload Image</label><input type="file" id="imgUpload" accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp,.svg,.dicom,.dcm" onchange="previewImage(event)" /></div>
             <div id="imgPreview"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -1065,7 +1067,7 @@ function renderSection(sec) {
                   <option value="">Select...</option>
                 </select>
               </div>
-              <div class="field" id="orderNameCustomField" style="display:none"><label>Custom Name</label><input type="text" id="orderNameCustom" placeholder="Enter custom order name" /></div>
+              <div class="field" id="orderNameCustomField" style="display:none"><label>Custom Name</label><input type="text" autocomplete="off" id="orderNameCustom" placeholder="Enter custom order name" /></div>
               <div class="field"><label>Priority</label>
                 <select id="orderPriority">
                   <option value="Routine">Routine</option>
@@ -1083,7 +1085,7 @@ function renderSection(sec) {
                 </select>
               </div>
             </div>
-            <div class="field"><label>Notes</label><input type="text" id="orderNotes" placeholder="Additional notes..." /></div>
+            <div class="field"><label>Notes</label><input type="text" autocomplete="off" id="orderNotes" placeholder="Additional notes..." /></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="addOrder()"><i class="ti ti-plus"></i> Add Order</button>
             </div>
@@ -1123,7 +1125,7 @@ function renderSection(sec) {
                 </select>
               </div>
               <div class="field"><label>Requested Date</label><input type="date" id="consultDate" /></div>
-              <div class="field"><label>Consultant</label><input type="text" id="consultConsultant" placeholder="e.g. Dr. Jones" /></div>
+              <div class="field"><label>Consultant</label><input type="text" autocomplete="off" id="consultConsultant" placeholder="e.g. Dr. Jones" /></div>
               <div class="field"><label>Status</label>
                 <select id="consultStatus">
                   <option value="Pending">Pending</option>
@@ -1133,7 +1135,7 @@ function renderSection(sec) {
                 </select>
               </div>
             </div>
-            <div class="field"><label>Summary</label><input type="text" id="consultSummary" placeholder="Reason for consultation..." /></div>
+            <div class="field"><label>Summary</label><input type="text" autocomplete="off" id="consultSummary" placeholder="Reason for consultation..." /></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
               <button class="btn btn-green" onclick="addConsultation()"><i class="ti ti-plus"></i> Request Consultation</button>
             </div>
@@ -1173,7 +1175,7 @@ function renderSection(sec) {
                   <option value="other">Other (custom)</option>
                 </select>
               </div>
-              <div class="field" id="studyNameCustomField" style="display:none"><label>Custom Name</label><input type="text" id="studyNameCustom" placeholder="Enter custom study name" /></div>
+              <div class="field" id="studyNameCustomField" style="display:none"><label>Custom Name</label><input type="text" autocomplete="off" id="studyNameCustom" placeholder="Enter custom study name" /></div>
               <div class="field"><label>Study Date</label><input type="date" id="studyDate" /></div>
               <div class="field"><label>Status</label>
                 <select id="studyStatus">
@@ -1184,7 +1186,7 @@ function renderSection(sec) {
                 </select>
               </div>
             </div>
-            <div class="field"><label>Result</label><input type="text" id="studyResult" placeholder="e.g. Normal" /></div>
+            <div class="field"><label>Result</label><input type="text" autocomplete="off" id="studyResult" placeholder="e.g. Normal" /></div>
             <div class="field"><label>Upload Image (EKG, X-Ray, etc.)</label><input type="file" id="studyUpload" accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.tif,.webp,.svg,.dicom,.dcm" onchange="previewStudyImage(event)" /></div>
             <div id="studyPreview"></div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -1214,7 +1216,7 @@ function renderSection(sec) {
             </div>
             <button class="btn btn-blue" onclick="addProblem()"><i class="ti ti-plus"></i> Add Problem</button>
           </div>
-          <div class="field" id="problemNameCustomField" style="display:none;margin-bottom:16px;"><label>Custom Problem Name</label><input type="text" id="problemNameCustom" placeholder="Enter custom problem name" /></div>
+          <div class="field" id="problemNameCustomField" style="display:none;margin-bottom:16px;"><label>Custom Problem Name</label><input type="text" autocomplete="off" id="problemNameCustom" placeholder="Enter custom problem name" /></div>
           ${currentProblems.length ? `
           <table class="med-table">
             <thead><tr><th>Problem</th><th>Category</th><th>Status</th><th>Annotation</th><th style="width:60px">Remove</th></tr></thead>
@@ -1376,12 +1378,12 @@ function renderSection(sec) {
             `).join('')}
           </div>` : ''}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-            <div class="field"><label>Nurse Name</label><input type="text" id="nurseName" placeholder="Nurse name" /></div>
+            <div class="field"><label>Nurse Name</label><input type="text" autocomplete="off" id="nurseName" placeholder="Nurse name" /></div>
             <div class="field"><label>Time</label><input type="time" id="nurseTime" /></div>
-            <div class="field"><label>Blood Pressure</label><input type="text" id="nurseBP" placeholder="e.g. 120/80 mmHg" value="${p.bp||''}" /></div>
-            <div class="field"><label>Heart Rate</label><input type="text" id="nurseHR" placeholder="e.g. 72 bpm" value="${p.hr?p.hr+' bpm':''}" /></div>
-            <div class="field"><label>Temperature</label><input type="text" id="nurseTemp" placeholder="e.g. 98.6°F" value="${p.temp||''}" /></div>
-            <div class="field"><label>Weight</label><input type="text" id="nurseWeight" placeholder="e.g. 150 lbs" value="${p.wt||''}" /></div>
+            <div class="field"><label>Blood Pressure</label><input type="text" autocomplete="off" id="nurseBP" placeholder="e.g. 120/80 mmHg" value="${p.bp||''}" /></div>
+            <div class="field"><label>Heart Rate</label><input type="text" autocomplete="off" id="nurseHR" placeholder="e.g. 72 bpm" value="${p.hr?p.hr+' bpm':''}" /></div>
+            <div class="field"><label>Temperature</label><input type="text" autocomplete="off" id="nurseTemp" placeholder="e.g. 98.6°F" value="${p.temp||''}" /></div>
+            <div class="field"><label>Weight</label><input type="text" autocomplete="off" id="nurseWeight" placeholder="e.g. 150 lbs" value="${p.wt||''}" /></div>
           </div>
           <div class="field"><label>Nursing Note</label><textarea class="note-area" id="nurseNote" placeholder="Nursing observations, interventions, and patient response&hellip;"></textarea></div>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
@@ -1814,9 +1816,10 @@ function buildReportContent(p) {
 
     if (currentMeds && currentMeds.length > 0) {
       currentMeds.forEach(med => {
+        const typeLabel = med.type === 'prescribed' ? 'New Prescription' : med.type === 'otc' ? 'Over the Counter' : med.type === 'supplement' ? 'Supplement' : 'Existing Medication';
         paragraphs.push(new Paragraph({
           spacing: { before: 100, after: 60 },
-          children: [new TextRun({ text: med.name, bold: true, size: 20, font })],
+          children: [new TextRun({ text: typeLabel + ': ' + med.name, bold: true, size: 20, font })],
         }));
         if (med.dose) addIndentedLine('Dose: ' + med.dose);
         if (med.freq) addIndentedLine('Frequency: ' + med.freq);

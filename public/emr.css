@@ -245,9 +245,13 @@ td { padding: 9px 10px; color: var(--text-main); font-size: 12px; overflow: hidd
 .badge.ready    { background: #e8f5e9; color: #1b5e20; }
 .badge.complete { background: #e3f2fd; color: #0d47a1; }
 .badge.cancelled{ background: #ffebee; color: #b71c1c; }
+.badge.pending  { background: #f3e5f5; color: #6a1b9a; }
+.badge.default  { background: #f5f5f5; color: #424242; }
 .dot-waiting  { background: #ffa726; }
 .dot-ready    { background: #43a047; }
 .dot-complete { background: #1565c0; }
+.dot-pending  { background: #8e24aa; }
+.dot-default  { background: #757575; }
 .dot-cancelled{ background: #e53935; }
 
 .action-btn {
