@@ -878,7 +878,7 @@ function renderSection(sec) {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="field"><label>Medication Type</label>
                 <select id="medType" onchange="toggleMedTypeFields()">
-                  <option value="existing">Existing Medication</option>
+                  <option value="existing">Existing Prescription</option>
                   <option value="prescribed">New Prescription</option>
                   <option value="otc">Over the Counter</option>
                   <option value="supplement">Supplement</option>
@@ -1816,7 +1816,7 @@ function buildReportContent(p) {
 
     if (currentMeds && currentMeds.length > 0) {
       currentMeds.forEach(med => {
-        const typeLabel = med.type === 'prescribed' ? 'New Prescription' : med.type === 'otc' ? 'Over the Counter' : med.type === 'supplement' ? 'Supplement' : 'Existing Medication';
+        const typeLabel = med.type === 'prescribed' ? 'New Prescription' : med.type === 'otc' ? 'Over the Counter' : med.type === 'supplement' ? 'Supplement' : 'Existing Prescription';
         paragraphs.push(new Paragraph({
           spacing: { before: 100, after: 60 },
           children: [new TextRun({ text: typeLabel + ': ' + med.name, bold: true, size: 20, font })],
