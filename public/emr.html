@@ -58,7 +58,7 @@
     </div>
 
     <div class="toolbar">
-      <input type="text" id="searchInput" placeholder="Search by name, MR#, or chief complaint&hellip;" oninput="filterTable()" />
+      <input type="text" autocomplete="off" id="searchInput" placeholder="Search by name, MR#, or chief complaint&hellip;" oninput="filterTable()" />
       <button class="btn btn-blue" onclick="filterTable()"><i class="ti ti-search"></i> Search</button>
     </div>
 
@@ -155,14 +155,14 @@
 <div class="modal-overlay" id="addModal">
   <div class="modal">
     <h3><i class="ti ti-user-plus"></i> Add New Patient</h3>
-    <div class="field"><label>Full Name (Last, First)</label><input type="text" id="newName" placeholder="e.g. Smith, John" /></div>
+    <div class="field"><label>Full Name (Last, First)</label><input type="text" autocomplete="off" id="newName" placeholder="e.g. Smith, John" /></div>
     <div class="field"><label>Date of Birth</label><input type="date" id="newDob" /></div>
     <div class="field"><label>Sex</label>
       <select id="newSex" style="width:100%;height:34px;border:1px solid var(--border);border-radius:4px;padding:0 10px;font-size:12px;">
         <option value="M">Male</option><option value="F">Female</option><option value="O">Other</option>
       </select>
     </div>
-    <div class="field"><label>Chief Complaint</label><input type="text" id="newCc" placeholder="e.g. Chest pain" /></div>
+    <div class="field"><label>Chief Complaint</label><input type="text" autocomplete="off" id="newCc" placeholder="e.g. Chest pain" /></div>
     <div class="field"><label>Appointment Time</label><input type="time" id="newAppt" /></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -232,7 +232,7 @@
 <div class="modal-overlay" id="profileModal">
   <div class="modal">
     <h3><i class="ti ti-user"></i> Edit Profile</h3>
-    <div class="field"><label>Display Name</label><input type="text" id="profileDisplayName" placeholder="e.g. Dr. Smith" /></div>
+    <div class="field"><label>Display Name</label><input type="text" autocomplete="off" id="profileDisplayName" placeholder="e.g. Dr. Smith" /></div>
     <div class="field"><label>Email</label><input type="email" id="profileEmail" placeholder="e.g. drsmith@example.com" /></div>
     <div class="field"><label>New Password (leave blank to keep current)</label><input type="password" id="profilePassword" placeholder="Enter new password" /></div>
     <div class="field"><label>Confirm Password</label><input type="password" id="profilePasswordConfirm" placeholder="Confirm new password" /></div>
