@@ -563,8 +563,6 @@ router.post('/:mr/password', requireAdmin, (req, res) => {
   } else {
     dbRun('UPDATE patients SET password_hash = NULL WHERE mr = ?', [req.params.mr]);
   }
-  // Clear all student access so they must re-authenticate with the new password
-  dbRun('DELETE FROM student_patient_access WHERE patient_mr = ?', [req.params.mr]);
   res.json({ success: true, hasPassword: !!password });
 });
 
