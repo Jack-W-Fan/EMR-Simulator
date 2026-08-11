@@ -356,7 +356,7 @@ function renderSchedule(data) {
 
     return `<tr onclick="selectRow(this,${i})" ondblclick="openPatient(${i})">
       <td style="font-weight:600">${p.name}</td>
-      <td>${p.dob}</td>
+      <td style="color:${isLocked ? '#999' : ''};${isLocked ? 'font-style:italic;' : ''}">${isLocked ? '••••••' : p.dob}</td>
       <td>${p.sex}</td>
       <td style="color:var(--blue-mid);font-weight:500">${p.mr}</td>
       <td title="${ccTitle}" style="color:${isLocked ? '#999' : '#444'};${isLocked ? 'font-style:italic;' : ''}">${ccDisplay}</td>
