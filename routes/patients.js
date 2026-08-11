@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { getDb, dbGet, dbAll, dbRun } = require('../database');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
@@ -13,6 +14,33 @@ try {
 const allCases = require('../cases/index');
 
 const router = express.Router();
+
+// ── Bulk access status for all patients (must be before /:mr routes) ──
+router.get('/access-status-all', requireAuth, (req, res) => {
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role === 'admin') {
+    return res.json({});
+  }
+
+  const patients = dbAll(
+    'SELECT mr, password_hash FROM patients WHERE user_id = ? OR is_shared = 1',
+    [req.session.userId]
+  );
+
+  const result = {};
+  for (const p of patients) {
+    if (p.password_hash) {
+      const access = dbGet(
+        'SELECT id FROM student_patient_access WHERE user_id = ? AND patient_mr = ?',
+        [req.session.userId, p.mr]
+      );
+      result[p.mr] = { hasPassword: true, isUnlocked: !!access };
+    } else {
+      result[p.mr] = { hasPassword: false, isUnlocked: true };
+    }
+  }
+  res.json(result);
+});
 
 function getPatientForUser(mr, userId) {
   getDb();
@@ -72,11 +100,16 @@ router.get('/', requireAuth, (req, res) => {
   getDb();
   // Get user's own patients plus shared patients from admins
   const patients = dbAll(`
-    SELECT * FROM patients
+    SELECT *, (password_hash IS NOT NULL) AS has_password FROM patients
     WHERE user_id = ? OR is_shared = 1
     ORDER BY id
   `, [req.session.userId]);
-  res.json(patients);
+  // Strip password_hash from response
+  const safe = patients.map(p => {
+    const { password_hash, ...rest } = p;
+    return rest;
+  });
+  res.json(safe);
 });
 
 router.post('/', requireAdmin, (req, res) => {
@@ -470,6 +503,7 @@ router.delete('/:mr', requireAdmin, (req, res) => {
   dbRun('DELETE FROM allergies WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patient_locks WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM interview_history WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM student_patient_access WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patients WHERE mr = ?', [mr]);
   res.json({ success: true });
 });
@@ -478,7 +512,7 @@ router.delete('/:mr/generate-only', requireAuth, (req, res) => {
   const mr = req.params.mr;
   const patient = dbGet('SELECT * FROM patients WHERE mr = ? AND user_id = ? AND is_generated = 1', [mr, req.session.userId]);
   if (!patient) {
-    return res.status(403).json({ error: 'Can only delete AI-generated cases. Seed/demo patients cannot be deleted.' });
+    return res.status(403).json({ error: 'Can only delete AI-generated cases. Seed/demo patients cannot be deleted by non-admin users.' });
   }
 
   dbRun('DELETE FROM medications WHERE patient_mr = ?', [mr]);
@@ -492,6 +526,7 @@ router.delete('/:mr/generate-only', requireAuth, (req, res) => {
   dbRun('DELETE FROM allergies WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patient_locks WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM interview_history WHERE patient_mr = ?', [mr]);
+  dbRun('DELETE FROM student_patient_access WHERE patient_mr = ?', [mr]);
   dbRun('DELETE FROM patients WHERE mr = ? AND user_id = ?', [mr, req.session.userId]);
   console.log(`[delete-case] User ${req.session.userId} deleted generated case ${mr}`);
   res.json({ success: true });
@@ -514,6 +549,76 @@ router.post('/:mr/lock', requireAuth, (req, res) => {
 
   dbRun('INSERT INTO patient_locks (patient_mr, user_id) VALUES (?, ?)', [req.params.mr, req.session.userId]);
   res.json({ success: true });
+});
+
+// ── Patient Password (admin sets, student verifies) ──
+router.post('/:mr/password', requireAdmin, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  const { password } = req.body;
+  if (password) {
+    const hash = bcrypt.hashSync(password, 10);
+    dbRun('UPDATE patients SET password_hash = ? WHERE mr = ?', [hash, req.params.mr]);
+  } else {
+    dbRun('UPDATE patients SET password_hash = NULL WHERE mr = ?', [req.params.mr]);
+  }
+  // Clear all student access so they must re-authenticate with the new password
+  dbRun('DELETE FROM student_patient_access WHERE patient_mr = ?', [req.params.mr]);
+  res.json({ success: true, hasPassword: !!password });
+});
+
+router.post('/:mr/verify-password', requireAuth, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+  if (user && user.role === 'admin') {
+    return res.json({ success: true, unlocked: true });
+  }
+
+  if (!patient.password_hash) {
+    return res.json({ success: true, unlocked: true });
+  }
+
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ success: false, error: 'Password is required' });
+  }
+
+  if (!bcrypt.compareSync(password, patient.password_hash)) {
+    return res.status(401).json({ success: false, error: 'Incorrect password' });
+  }
+
+  // Grant permanent access
+  dbRun(
+    'INSERT OR IGNORE INTO student_patient_access (user_id, patient_mr) VALUES (?, ?)',
+    [req.session.userId, req.params.mr]
+  );
+  res.json({ success: true, unlocked: true });
+});
+
+router.get('/:mr/access-status', requireAuth, (req, res) => {
+  const patient = getPatientForUser(req.params.mr, req.session.userId);
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  const hasPassword = !!patient.password_hash;
+  let isUnlocked = true;
+
+  if (hasPassword) {
+    const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
+    if (user && user.role === 'admin') {
+      isUnlocked = true;
+    } else {
+      const access = dbGet(
+        'SELECT id FROM student_patient_access WHERE user_id = ? AND patient_mr = ?',
+        [req.session.userId, req.params.mr]
+      );
+      isUnlocked = !!access;
+    }
+  }
+
+  res.json({ hasPassword, isUnlocked });
 });
 
 // Alias-to-canonical map for lab test names (so student-ordered "CBC" matches parsed "CBC" etc.)

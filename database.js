@@ -465,6 +465,20 @@ function initSchema() {
   try {
     db.run('ALTER TABLE patients ADD COLUMN bmi TEXT');
   } catch (e) {}
+  try {
+    db.run('ALTER TABLE patients ADD COLUMN password_hash TEXT');
+  } catch (e) {}
+  db.run(`
+    CREATE TABLE IF NOT EXISTS student_patient_access (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      patient_mr TEXT NOT NULL,
+      accessed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(user_id, patient_mr),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (patient_mr) REFERENCES patients(mr)
+    )
+  `);
 }
 
 function seedData() {

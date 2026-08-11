@@ -19,6 +19,9 @@ let currentOrderType = 'all';
 let noteFormOpen = false;
 let noteFormData = {};
 let editingNoteId = null;
+let patientAccessStatus = {};
+let passwordPromptPatientIndex = null;
+let setPasswordPatientIndex = null;
 
 const PROBLEM_CATEGORIES = {
   'Cardiovascular':   ['Hypertension','Coronary Artery Disease','Heart Failure','Atrial Fibrillation','Hyperlipidemia','Peripheral Artery Disease','Deep Vein Thrombosis','Pulmonary Embolism','Aortic Stenosis','Dilated Cardiomyopathy','Hypertrophic Cardiomyopathy','Venous Insufficiency','Varicose Veins','Endocarditis','Rheumatic Heart Disease','Myocardial Infarction','Ventricular Tachycardia','Congestive Heart Failure','Pulmonary Hypertension','Cardiomyopathy'],
@@ -303,8 +306,16 @@ async function loadPatients() {
   try {
     const data = await api('GET', '/api/patients');
     patients = data;
+    if (currentUserRole !== 'admin') {
+      try {
+        patientAccessStatus = await api('GET', '/api/patients/access-status-all');
+      } catch { patientAccessStatus = {}; }
+    } else {
+      patientAccessStatus = {};
+    }
   } catch {
     patients = [];
+    patientAccessStatus = {};
   }
   renderSchedule(patients);
   updateStats(patients);
@@ -313,18 +324,42 @@ async function loadPatients() {
 // ── SCHEDULE TABLE ──
 function renderSchedule(data) {
   const tbody = document.getElementById('scheduleBody');
+  const isAdmin = currentUserRole === 'admin';
+  const colCount = isAdmin ? 10 : 9;
+
+  // Update column group
+  const colgroup = document.querySelector('#scheduleBody')?.closest('table')?.querySelector('colgroup');
+  if (colgroup) {
+    if (isAdmin) {
+      colgroup.innerHTML = '<col style="width:15%"><col style="width:9%"><col style="width:5%"><col style="width:10%"><col style="width:20%"><col style="width:9%"><col style="width:12%"><col style="width:10%"><col style="width:7%"><col style="width:8%">';
+    } else {
+      colgroup.innerHTML = '<col style="width:15%"><col style="width:9%"><col style="width:5%"><col style="width:10%"><col style="width:22%"><col style="width:9%"><col style="width:12%"><col style="width:10%"><col style="width:8%">';
+    }
+  }
+
+  // Update header
+  const thead = document.querySelector('#scheduleBody')?.closest('table')?.querySelector('thead tr');
+  if (thead) {
+    thead.innerHTML = `<th>Patient Name</th><th>DOB</th><th>Sex</th><th>MR Number</th><th>Chief Complaint</th><th>Appt Time</th><th>Scheduled By</th><th>Status</th><th style="text-align:center">Open</th>${isAdmin ? '<th style="text-align:center">Set Password</th>' : ''}`;
+  }
+
   if (data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;padding:30px;">No patients found.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:#999;padding:30px;">No patients found.</td></tr>`;
     return;
   }
   tbody.innerHTML = data.map((p, i) => {
     const st = STATUS[p.status] || STATUS.waiting;
+    const access = patientAccessStatus[p.mr] || {};
+    const isLocked = !isAdmin && p.has_password && !access.isUnlocked;
+    const ccDisplay = isLocked ? '••••••' : p.cc;
+    const ccTitle = isLocked ? '' : p.cc;
+
     return `<tr onclick="selectRow(this,${i})" ondblclick="openPatient(${i})">
       <td style="font-weight:600">${p.name}</td>
       <td>${p.dob}</td>
       <td>${p.sex}</td>
       <td style="color:var(--blue-mid);font-weight:500">${p.mr}</td>
-      <td title="${p.cc}" style="color:#444">${p.cc}</td>
+      <td title="${ccTitle}" style="color:${isLocked ? '#999' : '#444'};${isLocked ? 'font-style:italic;' : ''}">${ccDisplay}</td>
       <td>${p.appt}</td>
       <td>${p.sched}</td>
       <td><span class="badge ${st.badgeClass}" style="cursor:pointer" onclick="event.stopPropagation();showPatientStatusDropdown(${i}, event)"><span class="badge-dot ${st.dotClass}"></span>${st.label}</span></td>
@@ -333,6 +368,11 @@ function renderSchedule(data) {
           <i class="ti ti-eye"></i>
         </button>
       </td>
+      ${isAdmin ? `<td style="text-align:center">
+        <button class="action-btn" title="${p.has_password ? 'Change password' : 'Set password'}" onclick="event.stopPropagation();openSetPasswordModal(${i})" style="${p.has_password ? 'color:var(--green)' : ''}">
+          <i class="ti ti-key"></i>
+        </button>
+      </td>` : ''}
     </tr>`;
   }).join('');
 }
@@ -469,6 +509,112 @@ async function saveProfile() {
     alert('Profile updated successfully!');
   } catch (e) {
     alert('Error updating profile: ' + e.message);
+  }
+}
+
+// ── SET PASSWORD MODAL (Admin) ──
+function openSetPasswordModal(i) {
+  setPasswordPatientIndex = i;
+  const p = patients[i];
+  document.getElementById('setPasswordPatientName').textContent = `${p.name} (${p.mr})`;
+  document.getElementById('newPatientPassword').value = '';
+  const statusEl = document.getElementById('setPasswordStatus');
+  statusEl.style.display = 'none';
+  const clearBtn = document.getElementById('clearPasswordBtn');
+  clearBtn.style.display = p.has_password ? 'inline-flex' : 'none';
+  document.getElementById('setPasswordModal').classList.add('open');
+}
+
+function closeSetPasswordModal() {
+  document.getElementById('setPasswordModal').classList.remove('open');
+  setPasswordPatientIndex = null;
+}
+
+async function savePatientPassword() {
+  if (setPasswordPatientIndex === null) return;
+  const p = patients[setPasswordPatientIndex];
+  const password = document.getElementById('newPatientPassword').value;
+  const statusEl = document.getElementById('setPasswordStatus');
+
+  if (!password || password.length < 1) {
+    statusEl.textContent = 'Password cannot be empty.';
+    statusEl.style.color = 'var(--red)';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    await api('POST', `/api/patients/${p.mr}/password`, { password });
+    p.has_password = true;
+    patientAccessStatus[p.mr] = { hasPassword: true, isUnlocked: true };
+    statusEl.textContent = 'Password set successfully!';
+    statusEl.style.color = 'var(--green)';
+    statusEl.style.display = 'block';
+    document.getElementById('clearPasswordBtn').style.display = 'inline-flex';
+    document.getElementById('newPatientPassword').value = '';
+    renderSchedule(patients);
+  } catch (e) {
+    statusEl.textContent = 'Error: ' + e.message;
+    statusEl.style.color = 'var(--red)';
+    statusEl.style.display = 'block';
+  }
+}
+
+async function clearPatientPassword() {
+  if (setPasswordPatientIndex === null) return;
+  const p = patients[setPasswordPatientIndex];
+  try {
+    await api('POST', `/api/patients/${p.mr}/password`, { password: '' });
+    p.has_password = false;
+    delete patientAccessStatus[p.mr];
+    closeSetPasswordModal();
+    renderSchedule(patients);
+  } catch (e) {
+    alert('Error clearing password: ' + e.message);
+  }
+}
+
+// ── PASSWORD PROMPT MODAL (Student) ──
+function openPasswordPromptModal(i) {
+  passwordPromptPatientIndex = i;
+  const p = patients[i];
+  document.getElementById('patientAccessPassword').value = '';
+  document.getElementById('passwordError').style.display = 'none';
+  document.getElementById('passwordPromptModal').classList.add('open');
+  setTimeout(() => document.getElementById('patientAccessPassword').focus(), 100);
+}
+
+function closePasswordPromptModal() {
+  document.getElementById('passwordPromptModal').classList.remove('open');
+  passwordPromptPatientIndex = null;
+}
+
+async function submitPatientPassword() {
+  if (passwordPromptPatientIndex === null) return;
+  const p = patients[passwordPromptPatientIndex];
+  const password = document.getElementById('patientAccessPassword').value;
+  const errorEl = document.getElementById('passwordError');
+
+  if (!password) {
+    errorEl.textContent = 'Please enter the password.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    await api('POST', `/api/patients/${p.mr}/verify-password`, { password });
+    patientAccessStatus[p.mr] = { hasPassword: true, isUnlocked: true };
+    p.has_password = true;
+    const idx = passwordPromptPatientIndex;
+    document.getElementById('passwordPromptModal').classList.remove('open');
+    passwordPromptPatientIndex = null;
+    renderSchedule(patients);
+    openPatient(idx);
+  } catch (e) {
+    errorEl.textContent = e.message || 'Incorrect password. Please try again.';
+    errorEl.style.display = 'block';
+    document.getElementById('patientAccessPassword').value = '';
+    document.getElementById('patientAccessPassword').focus();
   }
 }
 async function addPatient() {
@@ -633,6 +779,16 @@ async function openPatient(i) {
 
     currentPatient = patients[i];
     const p = currentPatient;
+
+    // Check if student needs to enter password
+    if (currentUserRole !== 'admin' && p.has_password) {
+      const access = patientAccessStatus[p.mr];
+      if (access && !access.isUnlocked) {
+        openPasswordPromptModal(i);
+        return;
+      }
+    }
+
     currentOrderType = 'all';
 
     await loadPatientData(p.mr);
@@ -647,7 +803,7 @@ async function openPatient(i) {
     updateAddendumBtn();
 
     document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
-    document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr + (p.is_generated ? ' · [AI-Generated]' : ' · [Demo]');
+    document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr;
 
     renderPatientInfo(p);
     renderEncounterInfo(p);
@@ -736,7 +892,7 @@ async function savePatientEdit() {
     Object.assign(currentPatient, updated);
     const idx = patients.findIndex(p => p.mr === currentPatient.mr);
     if (idx >= 0) Object.assign(patients[idx], updated);
-    document.getElementById('patientBadge').textContent = currentPatient.name + ' · ' + currentPatient.mr + (currentPatient.is_generated ? ' · [AI-Generated]' : ' · [Demo]');
+    document.getElementById('patientBadge').textContent = currentPatient.name + ' · ' + currentPatient.mr;
     cancelEdit('patient');
   } catch (e) {
     alert('Error saving: ' + e.message);

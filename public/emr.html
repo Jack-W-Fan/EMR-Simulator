@@ -243,6 +243,33 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="setPasswordModal">
+  <div class="modal">
+    <h3><i class="ti ti-key"></i> Set Patient Password</h3>
+    <p id="setPasswordPatientName" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></p>
+    <div class="field"><label>Password</label><input type="password" id="newPatientPassword" placeholder="Enter password for student access" /></div>
+    <p id="setPasswordStatus" style="font-size:11px;display:none;margin-top:8px;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" id="clearPasswordBtn" onclick="clearPatientPassword()" style="margin-right:auto;display:none;">Clear Password</button>
+      <button class="btn btn-outline" onclick="closeSetPasswordModal()">Cancel</button>
+      <button class="btn btn-green" onclick="savePatientPassword()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="passwordPromptModal">
+  <div class="modal">
+    <h3><i class="ti ti-lock"></i> Patient Protected</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">This patient record is password-protected. Enter the password to access it.</p>
+    <div class="field"><label>Password</label><input type="password" id="patientAccessPassword" placeholder="Enter password" onkeydown="if(event.key==='Enter')submitPatientPassword()" /></div>
+    <p id="passwordError" style="font-size:11px;color:var(--red);display:none;margin-top:4px;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closePasswordPromptModal()">Cancel</button>
+      <button class="btn btn-green" onclick="submitPatientPassword()">Unlock</button>
+    </div>
+  </div>
+</div>
+
 <!-- Coming Soon: Interview Modal
 <div class="modal-overlay" id="interviewModal" style="width:100%;">
   <div class="modal" style="width:500px; max-height:80vh; padding:20px; display:flex; flex-direction:column;">
