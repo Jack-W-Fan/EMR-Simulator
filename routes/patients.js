@@ -20,7 +20,7 @@ function calculateAge(dob) {
   let birth;
   if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
     birth = new Date(dob + 'T00:00:00');
-  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dob)) {
     const [m, d, y] = dob.split('/');
     birth = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
   } else {
@@ -393,7 +393,7 @@ router.put('/:mr', requireAuth, (req, res) => {
   const patient = getPatientForUser(req.params.mr, req.session.userId);
   if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
-  const { name, dob, sex, cc, appt, status, phone, ins, allergy, bp, hr, temp, wt, resp_rate, o2_sat, height, bmi } = req.body;
+  const { name, dob, age, sex, cc, appt, status, phone, ins, allergy, bp, hr, temp, wt, resp_rate, o2_sat, height, bmi } = req.body;
 
   const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
   const isAdmin = user && user.role === 'admin';
@@ -403,6 +403,7 @@ router.put('/:mr', requireAuth, (req, res) => {
       `UPDATE patients SET
         name = COALESCE(?, name),
         dob = COALESCE(?, dob),
+        age = COALESCE(?, age),
         sex = COALESCE(?, sex),
         cc = COALESCE(?, cc),
         appt = COALESCE(?, appt),
@@ -420,7 +421,7 @@ router.put('/:mr', requireAuth, (req, res) => {
         bmi = COALESCE(?, bmi),
         updated_at = datetime('now')
       WHERE mr = ?`,
-      [name || null, dob || null, sex || null, cc || null, appt || null, status || null,
+      [name || null, dob || null, age || null, sex || null, cc || null, appt || null, status || null,
        phone || null, ins || null, allergy || null, bp || null, hr || null, temp || null, wt || null,
        resp_rate || null, o2_sat || null, height || null, bmi || null,
        req.params.mr]
@@ -466,6 +467,11 @@ router.put('/:mr', requireAuth, (req, res) => {
          bp || null, hr || null, temp || null, wt || null, resp_rate || null, o2_sat || null, height || null, bmi || null]
       );
     }
+
+    // Save age directly to patients table (not in overrides table)
+    if (age != null) {
+      dbRun('UPDATE patients SET age = ? WHERE mr = ?', [age, req.params.mr]);
+    }
   }
 
   const updated = dbGet('SELECT * FROM patients WHERE mr = ?', [req.params.mr]);
@@ -495,6 +501,8 @@ router.put('/:mr', requireAuth, (req, res) => {
       if (uv.bmi) updated.bmi = uv.bmi;
     }
   }
+
+  updated.age = calculateAge(updated.dob);
 
   res.json(updated);
 });

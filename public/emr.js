@@ -109,7 +109,7 @@ function calculateAge(dob) {
   let birth;
   if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
     birth = new Date(dob + 'T00:00:00');
-  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dob)) {
     const [m, d, y] = dob.split('/');
     birth = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
   } else {
@@ -812,7 +812,9 @@ async function openPatient(i) {
 
     currentOrderType = 'all';
 
-    await loadPatientData(p.mr);
+    const patientData = await loadPatientData(p.mr);
+    // Update currentPatient with the detailed data (includes calculated age)
+    currentPatient = { ...currentPatient, ...patientData };
     updatePatientPhoto();
 
     // Check if patient is already locked (report already generated)
@@ -824,10 +826,10 @@ async function openPatient(i) {
     updateAddendumBtn();
 
     document.getElementById('patientLoggedUser').textContent = currentUser || 'Dr. Smith';
-    document.getElementById('patientBadge').textContent = p.name + ' · ' + p.mr;
+    document.getElementById('patientBadge').textContent = currentPatient.name + ' · ' + currentPatient.mr;
 
-    renderPatientInfo(p);
-    renderEncounterInfo(p);
+    renderPatientInfo(currentPatient);
+    renderEncounterInfo(currentPatient);
 
     setSection('note');
     showScreen('patientScreen');
@@ -842,7 +844,7 @@ function renderPatientInfo(p) {
   document.getElementById('patInfo').innerHTML = `
     <div class="info-row"><span class="info-label">Full Name</span><span class="info-value">${p.name}</span></div>
     <div class="info-row"><span class="info-label">Date of Birth</span><span class="info-value">${p.dob}</span></div>
-    <div class="info-row"><span class="info-label">Age</span><span class="info-value">${calculateAge(p.dob) || '—'}</span></div>
+    <div class="info-row"><span class="info-label">Age</span><span class="info-value">${p.age||'—'}</span></div>
     <div class="info-row"><span class="info-label">Sex</span><span class="info-value">${p.sex==='M'?'Male':p.sex==='F'?'Female':'Other'}</span></div>
     <div class="info-row"><span class="info-label">MR Number</span><span class="info-value" style="color:var(--blue-mid);font-weight:600">${p.mr}</span></div>
     <div class="info-row"><span class="info-label">Phone</span><span class="info-value">${p.phone||'—'}</span></div>
@@ -880,13 +882,17 @@ function updatePatientInfo() {
 // ── EDIT PATIENT / ENCOUNTER INFO ──
 function toggleEditPatient() {
   if (!currentPatient) return;
+  cancelEdit('encounter');
+  const existing = document.getElementById('patientEditForm');
+  if (existing) { cancelEdit('patient'); return; }
   const p = currentPatient;
   const body = document.getElementById('patInfo').parentElement;
   body.classList.add('editing');
   document.getElementById('patInfo').insertAdjacentHTML('afterend', `
     <div class="edit-form" id="patientEditForm">
       <div class="edit-row"><label>Full Name</label><input type="text" autocomplete="off" id="editName" value="${p.name||''}" /></div>
-      <div class="edit-row"><label>Date of Birth</label><input type="text" autocomplete="off" id="editDob" value="${p.dob||''}" /></div>
+      <div class="edit-row"><label>Date of Birth</label><input type="text" autocomplete="off" id="editDob" value="${p.dob||''}" oninput="document.getElementById('editAge').value=calculateAge(this.value)||''" /></div>
+      <div class="edit-row"><label>Age</label><input type="number" min="0" autocomplete="off" id="editAge" value="${p.age||''}" /></div>
       <div class="edit-row"><label>Sex</label>
         <select id="editSex"><option value="M" ${p.sex==='M'?'selected':''}>Male</option><option value="F" ${p.sex==='F'?'selected':''}>Female</option><option value="O" ${p.sex==='O'?'selected':''}>Other</option></select>
       </div>
@@ -904,6 +910,7 @@ async function savePatientEdit() {
   const data = {
     name: document.getElementById('editName').value,
     dob: document.getElementById('editDob').value,
+    age: parseInt(document.getElementById('editAge').value) || null,
     sex: document.getElementById('editSex').value,
     phone: document.getElementById('editPhone').value,
     ins: document.getElementById('editIns').value,
@@ -922,6 +929,9 @@ async function savePatientEdit() {
 
 function toggleEditEncounter() {
   if (!currentPatient) return;
+  cancelEdit('patient');
+  const existing = document.getElementById('encounterEditForm');
+  if (existing) { cancelEdit('encounter'); return; }
   const p = currentPatient;
   const body = document.getElementById('encInfo');
   body.classList.add('editing');
