@@ -15,6 +15,27 @@ const allCases = require('../cases/index');
 
 const router = express.Router();
 
+function calculateAge(dob) {
+  if (!dob) return null;
+  let birth;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    birth = new Date(dob + 'T00:00:00');
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+    const [m, d, y] = dob.split('/');
+    birth = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  } else {
+    return null;
+  }
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
+
 // ── Bulk access status for all patients (must be before /:mr routes) ──
 router.get('/access-status-all', requireAuth, (req, res) => {
   const user = dbGet('SELECT role FROM users WHERE id = ?', [req.session.userId]);
@@ -104,9 +125,10 @@ router.get('/', requireAuth, (req, res) => {
     WHERE user_id = ? OR is_shared = 1
     ORDER BY id
   `, [req.session.userId]);
-  // Strip password_hash from response
+  // Strip password_hash from response and auto-calculate age from DOB
   const safe = patients.map(p => {
     const { password_hash, ...rest } = p;
+    rest.age = calculateAge(rest.dob);
     return rest;
   });
   res.json(safe);
@@ -361,6 +383,8 @@ router.get('/:mr', requireAuth, (req, res) => {
     if (userVitals.height) result.height = userVitals.height;
     if (userVitals.bmi) result.bmi = userVitals.bmi;
   }
+
+  result.age = calculateAge(result.dob);
 
   res.json(result);
 });
@@ -1135,7 +1159,7 @@ RULES:
 
 PATIENT PROFILE (this is your information):
 - Name: ${patient.name}
-- Age: ${patient.age || 'N/A'}
+- Age: ${calculateAge(patient.dob) || 'N/A'}
 - Chief complaint: ${currentNote.chief_complaint || ''}
 - HPI details: ${currentNote.history_present_illness || ''}
 - Medical history: ${problemList || 'None'}

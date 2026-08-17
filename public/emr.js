@@ -104,6 +104,27 @@ async function api(method, url, body) {
   return data;
 }
 
+function calculateAge(dob) {
+  if (!dob) return null;
+  let birth;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    birth = new Date(dob + 'T00:00:00');
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+    const [m, d, y] = dob.split('/');
+    birth = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  } else {
+    return null;
+  }
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
+
 // ── GENERATE CASE MODAL ── (Coming Soon)
 /*
 function openGenerateCaseModal() {
@@ -821,7 +842,7 @@ function renderPatientInfo(p) {
   document.getElementById('patInfo').innerHTML = `
     <div class="info-row"><span class="info-label">Full Name</span><span class="info-value">${p.name}</span></div>
     <div class="info-row"><span class="info-label">Date of Birth</span><span class="info-value">${p.dob}</span></div>
-    <div class="info-row"><span class="info-label">Age</span><span class="info-value">${p.age || '—'}</span></div>
+    <div class="info-row"><span class="info-label">Age</span><span class="info-value">${calculateAge(p.dob) || '—'}</span></div>
     <div class="info-row"><span class="info-label">Sex</span><span class="info-value">${p.sex==='M'?'Male':p.sex==='F'?'Female':'Other'}</span></div>
     <div class="info-row"><span class="info-label">MR Number</span><span class="info-value" style="color:var(--blue-mid);font-weight:600">${p.mr}</span></div>
     <div class="info-row"><span class="info-label">Phone</span><span class="info-value">${p.phone||'—'}</span></div>
