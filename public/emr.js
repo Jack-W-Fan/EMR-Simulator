@@ -1016,11 +1016,11 @@ function cancelEdit(type) {
 function setSection(sec) {
   // Auto-save current Trix editor content before switching away from note section
   if (currentSection === 'note' && (noteFormOpen || editingNoteId) && window.trixEditors) {
-    const noteFields = ['noteChiefComplaint','noteHPI','notePMH','noteSurgical','noteHospitalizations','noteHealth','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
-    const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','surgical_history','hospitalizations','health_maintenance','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
+    const noteFields = ['noteChiefComplaint','noteHPI','notePMH','notePHQ2','noteSurgical','noteHospitalizations','noteHealth','noteAdvDirective','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
+    const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','phq2_screening','surgical_history','hospitalizations','health_maintenance','advanced_directive','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
     if (currentPatient && currentPatient.sex === 'F') {
-      noteFields.splice(5, 0, 'noteGynObs');
-      fieldKeys.splice(5, 0, 'gynecological_obstetric_history');
+      noteFields.splice(6, 0, 'noteGynObs');
+      fieldKeys.splice(6, 0, 'gynecological_obstetric_history');
     }
     noteFields.forEach((id, i) => {
       const editor = window.trixEditors[id];
@@ -1441,16 +1441,16 @@ function renderSection(sec) {
 
   else if (sec === 'note') {
     const isFemale = currentPatient && currentPatient.sex === 'F';
-    const noteFields = ['noteChiefComplaint','noteHPI','notePMH','noteSurgical','noteHospitalizations','noteHealth','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
-    const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','surgical_history','hospitalizations','health_maintenance','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
-    const fieldLabels = ['Chief Complaint','History of Present Illness','Past Medical History','Surgical History','Hospitalizations','Health Maintenance/Immunizations','Family History','Social History','Review of Systems','Physical Exam','Assessment','Differential Diagnosis','Plan'];
-    const fieldPlaceholders = ['Reason for visit&hellip;','Detailed history of current illness&hellip;','Previous medical conditions&hellip;','Previous surgeries&hellip;','Previous hospital admissions&hellip;','Preventive care, vaccinations&hellip;','Family medical history&hellip;','Social determinants, habits&hellip;','Systematic review of body systems&hellip;','Examination findings&hellip;','Diagnosis or clinical impression&hellip;','Differential diagnoses&hellip;','Treatment plan, follow-up, referrals&hellip;'];
+    const noteFields = ['noteChiefComplaint','noteHPI','notePMH','notePHQ2','noteSurgical','noteHospitalizations','noteHealth','noteAdvDirective','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
+    const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','phq2_screening','surgical_history','hospitalizations','health_maintenance','advanced_directive','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
+    const fieldLabels = ['Chief Complaint','History of Present Illness','Past Medical History','PHQ-2 Screening for Depression','Surgical History','Hospitalizations','Health Maintenance/Immunizations','Advanced Directive','Family History','Social History','Review of Systems','Physical Exam','Assessment','Differential Diagnosis','Plan'];
+    const fieldPlaceholders = ['Reason for visit&hellip;','Detailed history of current illness&hellip;','Previous medical conditions&hellip;','PHQ-2 depression screening responses&hellip;','Previous surgeries&hellip;','Previous hospital admissions&hellip;','Preventive care, vaccinations&hellip;','Healthcare power of attorney, living will&hellip;','Family medical history&hellip;','Social determinants, habits&hellip;','Systematic review of body systems&hellip;','Examination findings&hellip;','Diagnosis or clinical impression&hellip;','Differential diagnoses&hellip;','Treatment plan, follow-up, referrals&hellip;'];
 
     if (isFemale) {
-      noteFields.splice(5, 0, 'noteGynObs');
-      fieldKeys.splice(5, 0, 'gynecological_obstetric_history');
-      fieldLabels.splice(5, 0, 'Gynecological & Obstetric History');
-      fieldPlaceholders.splice(5, 0, 'Menstrual history, pregnancies, OB history&hellip;');
+      noteFields.splice(6, 0, 'noteGynObs');
+      fieldKeys.splice(6, 0, 'gynecological_obstetric_history');
+      fieldLabels.splice(6, 0, 'Gynecological & Obstetric History');
+      fieldPlaceholders.splice(6, 0, 'Menstrual history, pregnancies, OB history&hellip;');
     }
 
     function getFieldValue(key, index) {
@@ -1501,10 +1501,12 @@ function renderSection(sec) {
                 <div id="noteDetails${n.id}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--blue-mid);">
                   ${n.history_present_illness ? `<div style="margin-bottom:4px;"><strong>HPI:</strong> ${n.history_present_illness}</div>` : ''}
                   ${n.past_medical_history ? `<div style="margin-bottom:4px;"><strong>PMH:</strong> ${n.past_medical_history}</div>` : ''}
+                  ${n.phq2_screening ? `<div style="margin-bottom:4px;"><strong>PHQ-2 Screening:</strong> ${n.phq2_screening}</div>` : ''}
                   ${n.surgical_history ? `<div style="margin-bottom:4px;"><strong>Surgical History:</strong> ${n.surgical_history}</div>` : ''}
                   ${n.hospitalizations ? `<div style="margin-bottom:4px;"><strong>Hospitalizations:</strong> ${n.hospitalizations}</div>` : ''}
                   ${currentPatient && currentPatient.sex === 'F' && n.gynecological_obstetric_history ? `<div style="margin-bottom:4px;"><strong>Gynecological & Obstetric History:</strong> ${n.gynecological_obstetric_history}</div>` : ''}
                   ${n.health_maintenance ? `<div style="margin-bottom:4px;"><strong>Health Maintenance:</strong> ${n.health_maintenance}</div>` : ''}
+                  ${n.advanced_directive ? `<div style="margin-bottom:4px;"><strong>Advanced Directive:</strong> ${n.advanced_directive}</div>` : ''}
                   ${n.family_history ? `<div style="margin-bottom:4px;"><strong>Family History:</strong> ${n.family_history}</div>` : ''}
                   ${n.social_history ? `<div style="margin-bottom:4px;"><strong>Social History:</strong> ${n.social_history}</div>` : ''}
                   ${n.review_of_systems ? `<div style="margin-bottom:4px;"><strong>ROS:</strong> ${n.review_of_systems}</div>` : ''}
@@ -1674,10 +1676,12 @@ async function savePhysicianNote() {
   const chief_complaint = getTrixHtml('noteChiefComplaint');
   const history_present_illness = getTrixHtml('noteHPI');
   const past_medical_history = getTrixHtml('notePMH');
+  const phq2_screening = getTrixHtml('notePHQ2');
   const surgical_history = getTrixHtml('noteSurgical');
   const hospitalizations = getTrixHtml('noteHospitalizations');
   const gynecological_obstetric_history = currentPatient.sex === 'F' ? getTrixHtml('noteGynObs') : '';
   const health_maintenance = getTrixHtml('noteHealth');
+  const advanced_directive = getTrixHtml('noteAdvDirective');
   const family_history = getTrixHtml('noteFamily');
   const social_history = getTrixHtml('noteSocial');
   const review_of_systems = getTrixHtml('noteROS');
@@ -1694,10 +1698,12 @@ async function savePhysicianNote() {
       chief_complaint,
       history_present_illness,
       past_medical_history,
+      phq2_screening,
       surgical_history,
       hospitalizations,
       gynecological_obstetric_history,
       health_maintenance,
+      advanced_directive,
       family_history,
       social_history,
       review_of_systems,
@@ -1724,10 +1730,12 @@ async function saveNoteEdit() {
   const chief_complaint = getTrixHtml('noteChiefComplaint');
   const history_present_illness = getTrixHtml('noteHPI');
   const past_medical_history = getTrixHtml('notePMH');
+  const phq2_screening = getTrixHtml('notePHQ2');
   const surgical_history = getTrixHtml('noteSurgical');
   const hospitalizations = getTrixHtml('noteHospitalizations');
   const gynecological_obstetric_history = currentPatient.sex === 'F' ? getTrixHtml('noteGynObs') : '';
   const health_maintenance = getTrixHtml('noteHealth');
+  const advanced_directive = getTrixHtml('noteAdvDirective');
   const family_history = getTrixHtml('noteFamily');
   const social_history = getTrixHtml('noteSocial');
   const review_of_systems = getTrixHtml('noteROS');
@@ -1744,10 +1752,12 @@ async function saveNoteEdit() {
       chief_complaint,
       history_present_illness,
       past_medical_history,
+      phq2_screening,
       surgical_history,
       hospitalizations,
       gynecological_obstetric_history,
       health_maintenance,
+      advanced_directive,
       family_history,
       social_history,
       review_of_systems,
@@ -2028,6 +2038,7 @@ function buildReportContent(p) {
     addLabelLine('Chief Complaint'); addValueLine(latestNote.chief_complaint);
     addLabelLine('History of Present Illness'); addValueLine(latestNote.history_present_illness);
     addLabelLine('Past Medical History'); addValueLine(latestNote.past_medical_history);
+    addLabelLine('PHQ-2 Screening for Depression'); addValueLine(latestNote.phq2_screening);
     addLabelLine('Surgical History'); addValueLine(latestNote.surgical_history);
     addLabelLine('Hospitalizations'); addValueLine(latestNote.hospitalizations);
     if (p.sex === 'F' && latestNote.gynecological_obstetric_history) {
@@ -2078,6 +2089,7 @@ function buildReportContent(p) {
     }
 
     addLabelLine('Health Maintenance/Immunizations'); addValueLine(latestNote.health_maintenance);
+    addLabelLine('Advanced Directive'); addValueLine(latestNote.advanced_directive);
     addLabelLine('Family History'); addValueLine(latestNote.family_history);
     addLabelLine('Social History'); addValueLine(latestNote.social_history);
     addLabelLine('Review of Systems'); addValueLine(latestNote.review_of_systems);
