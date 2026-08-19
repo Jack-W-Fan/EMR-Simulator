@@ -1014,6 +1014,21 @@ function cancelEdit(type) {
 
 // ── SECTION SWITCHING ──
 function setSection(sec) {
+  // Auto-save current Trix editor content before switching away from note section
+  if (currentSection === 'note' && (noteFormOpen || editingNoteId) && window.trixEditors) {
+    const noteFields = ['noteChiefComplaint','noteHPI','notePMH','noteSurgical','noteHospitalizations','noteHealth','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
+    const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','surgical_history','hospitalizations','health_maintenance','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
+    if (currentPatient && currentPatient.sex === 'F') {
+      noteFields.splice(5, 0, 'noteGynObs');
+      fieldKeys.splice(5, 0, 'gynecological_obstetric_history');
+    }
+    noteFields.forEach((id, i) => {
+      const editor = window.trixEditors[id];
+      if (editor && editor.hidden) {
+        noteFormData[fieldKeys[i]] = editor.hidden.value;
+      }
+    });
+  }
   currentSection = sec;
   document.querySelectorAll('.sec-tab').forEach(t => t.classList.remove('active'));
   const tab = document.getElementById('sec' + sec.charAt(0).toUpperCase() + sec.slice(1));
@@ -1425,10 +1440,18 @@ function renderSection(sec) {
   }
 
   else if (sec === 'note') {
+    const isFemale = currentPatient && currentPatient.sex === 'F';
     const noteFields = ['noteChiefComplaint','noteHPI','notePMH','noteSurgical','noteHospitalizations','noteHealth','noteFamily','noteSocial','noteROS','notePhysical','noteAssessment','noteDiffDx','notePlan'];
     const fieldKeys = ['chief_complaint','history_present_illness','past_medical_history','surgical_history','hospitalizations','health_maintenance','family_history','social_history','review_of_systems','physical_exam','assessment','differential_diagnosis','plan'];
     const fieldLabels = ['Chief Complaint','History of Present Illness','Past Medical History','Surgical History','Hospitalizations','Health Maintenance/Immunizations','Family History','Social History','Review of Systems','Physical Exam','Assessment','Differential Diagnosis','Plan'];
     const fieldPlaceholders = ['Reason for visit&hellip;','Detailed history of current illness&hellip;','Previous medical conditions&hellip;','Previous surgeries&hellip;','Previous hospital admissions&hellip;','Preventive care, vaccinations&hellip;','Family medical history&hellip;','Social determinants, habits&hellip;','Systematic review of body systems&hellip;','Examination findings&hellip;','Diagnosis or clinical impression&hellip;','Differential diagnoses&hellip;','Treatment plan, follow-up, referrals&hellip;'];
+
+    if (isFemale) {
+      noteFields.splice(5, 0, 'noteGynObs');
+      fieldKeys.splice(5, 0, 'gynecological_obstetric_history');
+      fieldLabels.splice(5, 0, 'Gynecological & Obstetric History');
+      fieldPlaceholders.splice(5, 0, 'Menstrual history, pregnancies, OB history&hellip;');
+    }
 
     function getFieldValue(key, index) {
       if (editingNoteId) {
@@ -1480,6 +1503,7 @@ function renderSection(sec) {
                   ${n.past_medical_history ? `<div style="margin-bottom:4px;"><strong>PMH:</strong> ${n.past_medical_history}</div>` : ''}
                   ${n.surgical_history ? `<div style="margin-bottom:4px;"><strong>Surgical History:</strong> ${n.surgical_history}</div>` : ''}
                   ${n.hospitalizations ? `<div style="margin-bottom:4px;"><strong>Hospitalizations:</strong> ${n.hospitalizations}</div>` : ''}
+                  ${currentPatient && currentPatient.sex === 'F' && n.gynecological_obstetric_history ? `<div style="margin-bottom:4px;"><strong>Gynecological & Obstetric History:</strong> ${n.gynecological_obstetric_history}</div>` : ''}
                   ${n.health_maintenance ? `<div style="margin-bottom:4px;"><strong>Health Maintenance:</strong> ${n.health_maintenance}</div>` : ''}
                   ${n.family_history ? `<div style="margin-bottom:4px;"><strong>Family History:</strong> ${n.family_history}</div>` : ''}
                   ${n.social_history ? `<div style="margin-bottom:4px;"><strong>Social History:</strong> ${n.social_history}</div>` : ''}
@@ -1652,6 +1676,7 @@ async function savePhysicianNote() {
   const past_medical_history = getTrixHtml('notePMH');
   const surgical_history = getTrixHtml('noteSurgical');
   const hospitalizations = getTrixHtml('noteHospitalizations');
+  const gynecological_obstetric_history = currentPatient.sex === 'F' ? getTrixHtml('noteGynObs') : '';
   const health_maintenance = getTrixHtml('noteHealth');
   const family_history = getTrixHtml('noteFamily');
   const social_history = getTrixHtml('noteSocial');
@@ -1671,6 +1696,7 @@ async function savePhysicianNote() {
       past_medical_history,
       surgical_history,
       hospitalizations,
+      gynecological_obstetric_history,
       health_maintenance,
       family_history,
       social_history,
@@ -1700,6 +1726,7 @@ async function saveNoteEdit() {
   const past_medical_history = getTrixHtml('notePMH');
   const surgical_history = getTrixHtml('noteSurgical');
   const hospitalizations = getTrixHtml('noteHospitalizations');
+  const gynecological_obstetric_history = currentPatient.sex === 'F' ? getTrixHtml('noteGynObs') : '';
   const health_maintenance = getTrixHtml('noteHealth');
   const family_history = getTrixHtml('noteFamily');
   const social_history = getTrixHtml('noteSocial');
@@ -1719,6 +1746,7 @@ async function saveNoteEdit() {
       past_medical_history,
       surgical_history,
       hospitalizations,
+      gynecological_obstetric_history,
       health_maintenance,
       family_history,
       social_history,
@@ -1785,6 +1813,8 @@ function updateDeleteBtn() {
 function buildReportContent(p) {
   const { Paragraph, TextRun, BorderStyle } = docx;
   const paragraphs = [];
+  const numberingConfigs = [];
+  let olCounter = 0;
   const font = 'Helvetica';
 
   function formatVisitType(type) {
@@ -1861,6 +1891,12 @@ function buildReportContent(p) {
     const clean = stripHtml(html);
     if (!clean.trim()) return;
 
+    const olRef = 'ol-list-' + (olCounter++);
+    numberingConfigs.push({
+      reference: olRef,
+      levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT }],
+    });
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const body = doc.body;
@@ -1897,7 +1933,7 @@ function buildReportContent(p) {
           if (isBullet) {
             pOpts.bullet = { level };
           } else {
-            pOpts.numbering = { reference: 'ol-list', level };
+            pOpts.numbering = { reference: olRef, level };
           }
           paragraphs.push(new Paragraph(pOpts));
         }
@@ -1994,6 +2030,9 @@ function buildReportContent(p) {
     addLabelLine('Past Medical History'); addValueLine(latestNote.past_medical_history);
     addLabelLine('Surgical History'); addValueLine(latestNote.surgical_history);
     addLabelLine('Hospitalizations'); addValueLine(latestNote.hospitalizations);
+    if (p.sex === 'F' && latestNote.gynecological_obstetric_history) {
+      addLabelLine('Gynecological & Obstetric History'); addValueLine(latestNote.gynecological_obstetric_history);
+    }
 
     // ── Sub-Header: bold 12pt ──
     paragraphs.push(new Paragraph({
@@ -2042,9 +2081,9 @@ function buildReportContent(p) {
     addLabelLine('Family History'); addValueLine(latestNote.family_history);
     addLabelLine('Social History'); addValueLine(latestNote.social_history);
     addLabelLine('Review of Systems'); addValueLine(latestNote.review_of_systems);
-    addLabelLine('Physical Exam'); addValueLine(latestNote.physical_exam);
 
     // ── Vital Signs subsection under Physical Exam ──
+    addLabelLine('Physical Exam');
     paragraphs.push(new Paragraph({
       spacing: { before: 120, after: 80 },
       children: [new TextRun({ text: 'Vital Signs', bold: true, size: 20, font })],
@@ -2057,6 +2096,7 @@ function buildReportContent(p) {
     addSimpleLine('Height', p.height);
     addSimpleLine('Weight', p.wt);
     addSimpleLine('BMI', p.bmi);
+    addValueLine(latestNote.physical_exam);
 
     addLabelLine('Assessment'); addValueLine(latestNote.assessment);
     addLabelLine('Differential Diagnosis'); addValueLine(latestNote.differential_diagnosis);
@@ -2065,7 +2105,7 @@ function buildReportContent(p) {
     addLabelLine('Physician Note'); addValueLine('No physician notes on file for this patient.');
   }
 
-  return paragraphs;
+  return { paragraphs, numberingConfigs };
 }
 
 function openAddendumModal() {
@@ -2089,7 +2129,7 @@ async function submitAddendum() {
 
   try {
     const p = currentPatient;
-    const reportParagraphs = buildReportContent(p);
+    const { paragraphs: reportParagraphs, numberingConfigs } = buildReportContent(p);
 
     // Addendum section — bold 14pt header, normal 10pt body, matching PDF
     reportParagraphs.push(new docx.Paragraph({
@@ -2115,7 +2155,7 @@ async function submitAddendum() {
     }));
 
     const doc = new docx.Document({
-      numbering: { config: [{ reference: 'ol-list', levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT }] }] },
+      numbering: { config: numberingConfigs },
       sections: [{ children: reportParagraphs }],
     });
 
@@ -2148,7 +2188,7 @@ async function generateReport() {
 
   try {
     const p = currentPatient;
-    const reportParagraphs = buildReportContent(p);
+    const { paragraphs: reportParagraphs, numberingConfigs } = buildReportContent(p);
 
     // Signed by
     reportParagraphs.push(new docx.Paragraph({ spacing: { before: 300 }, children: [] }));
@@ -2157,7 +2197,7 @@ async function generateReport() {
     }));
 
     const doc = new docx.Document({
-      numbering: { config: [{ reference: 'ol-list', levels: [{ level: 0, format: docx.LevelFormat.DECIMAL, text: '%1.', alignment: docx.AlignmentType.LEFT }] }] },
+      numbering: { config: numberingConfigs },
       sections: [{ children: reportParagraphs }],
     });
 

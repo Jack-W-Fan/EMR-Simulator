@@ -741,6 +741,7 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
     past_medical_history,
     surgical_history,
     hospitalizations,
+    gynecological_obstetric_history,
     health_maintenance,
     family_history,
     social_history,
@@ -756,8 +757,8 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
   const isShared = isAdminUser ? 1 : 0;
 
   const result = dbRun(
-    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', differential_diagnosis || '', plan || '', createdBy, isShared]
+    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, surgical_history, hospitalizations, gynecological_obstetric_history, health_maintenance, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', surgical_history || '', hospitalizations || '', gynecological_obstetric_history || '', health_maintenance || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', differential_diagnosis || '', plan || '', createdBy, isShared]
   );
 
   const note = dbGet('SELECT * FROM physician_notes WHERE id = ?', [result.lastInsertRowid]);
@@ -774,6 +775,7 @@ router.put('/:mr/physician-notes/:id', requireAuth, (req, res) => {
     past_medical_history,
     surgical_history,
     hospitalizations,
+    gynecological_obstetric_history,
     health_maintenance,
     family_history,
     social_history,
@@ -791,6 +793,7 @@ router.put('/:mr/physician-notes/:id', requireAuth, (req, res) => {
       past_medical_history = COALESCE(?, past_medical_history),
       surgical_history = COALESCE(?, surgical_history),
       hospitalizations = COALESCE(?, hospitalizations),
+      gynecological_obstetric_history = COALESCE(?, gynecological_obstetric_history),
       health_maintenance = COALESCE(?, health_maintenance),
       family_history = COALESCE(?, family_history),
       social_history = COALESCE(?, social_history),
@@ -802,7 +805,7 @@ router.put('/:mr/physician-notes/:id', requireAuth, (req, res) => {
       edited_at = datetime('now')
     WHERE id = ? AND patient_mr = ?`,
     [chief_complaint, history_present_illness, past_medical_history, surgical_history,
-     hospitalizations, health_maintenance, family_history, social_history,
+     hospitalizations, gynecological_obstetric_history, health_maintenance, family_history, social_history,
      review_of_systems, physical_exam, assessment, differential_diagnosis, plan,
      req.params.id, req.params.mr]
   );

@@ -281,6 +281,10 @@ function initSchema() {
   try {
     db.run('ALTER TABLE physician_notes ADD COLUMN differential_diagnosis TEXT');
   } catch (e) {}
+  // Add gynecological_obstetric_history column
+  try {
+    db.run('ALTER TABLE physician_notes ADD COLUMN gynecological_obstetric_history TEXT');
+  } catch (e) {}
   db.run(`
     CREATE TABLE IF NOT EXISTS nursing_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
