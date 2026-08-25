@@ -759,7 +759,7 @@ router.post('/:mr/physician-notes', requireAuth, (req, res) => {
   const isShared = isAdminUser ? 1 : 0;
 
   const result = dbRun(
-    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, phq2_screening, surgical_history, hospitalizations, gynecological_obstetric_history, health_maintenance, advanced_directive, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO physician_notes (patient_mr, user_id, chief_complaint, history_present_illness, past_medical_history, phq2_screening, surgical_history, hospitalizations, gynecological_obstetric_history, health_maintenance, advanced_directive, family_history, social_history, review_of_systems, physical_exam, assessment, differential_diagnosis, plan, created_by, is_shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [req.params.mr, req.session.userId, chief_complaint || '', history_present_illness || '', past_medical_history || '', phq2_screening || '', surgical_history || '', hospitalizations || '', gynecological_obstetric_history || '', health_maintenance || '', advanced_directive || '', family_history || '', social_history || '', review_of_systems || '', physical_exam || '', assessment || '', differential_diagnosis || '', plan || '', createdBy, isShared]
   );
 
