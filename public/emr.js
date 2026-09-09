@@ -1871,25 +1871,26 @@ function buildReportContent(p) {
     return tmp.textContent || tmp.innerText || '';
   }
 
-  function parseInlineRuns(node) {
+  function parseInlineRuns(node, inheritBold, inheritItalic) {
     const runs = [];
     node.childNodes.forEach(child => {
       if (child.nodeType === 3) {
         const text = child.textContent;
-        if (text) runs.push(new TextRun({ text, size: 20, font }));
+        if (text) {
+          const opts = { text, size: 20, font };
+          if (inheritBold) opts.bold = true;
+          if (inheritItalic) opts.italics = true;
+          runs.push(new TextRun(opts));
+        }
       } else if (child.nodeType === 1) {
         const tag = child.tagName.toLowerCase();
-        const isBold = tag === 'strong' || tag === 'b';
-        const isItalic = tag === 'em' || tag === 'i';
+        const isBold = inheritBold || tag === 'strong' || tag === 'b';
+        const isItalic = inheritItalic || tag === 'em' || tag === 'i';
         if (tag === 'br') {
           runs.push(new TextRun({ text: '\n', size: 20, font }));
         } else {
-          const innerRuns = parseInlineRuns(child);
-          innerRuns.forEach(r => {
-            if (isBold) r.options.bold = true;
-            if (isItalic) r.options.italics = true;
-            runs.push(r);
-          });
+          const innerRuns = parseInlineRuns(child, isBold, isItalic);
+          innerRuns.forEach(r => runs.push(r));
         }
       }
     });
@@ -2085,7 +2086,7 @@ function buildReportContent(p) {
         if (allergy.first_encounter) addIndentedLine('First Encountered: ' + allergy.first_encounter);
       });
     } else {
-      addLabelLine('Allergies'); addValueLine('No allergies on file');
+      addValueLine('No allergies on file');
     }
 
     addLabelLine('Health Maintenance/Immunizations'); addValueLine(latestNote.health_maintenance);
