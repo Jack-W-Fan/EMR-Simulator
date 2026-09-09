@@ -1924,7 +1924,9 @@ function buildReportContent(p) {
           } else if (cn.nodeType === 1) {
             const t = cn.tagName.toLowerCase();
             if (t !== 'ul' && t !== 'ol') {
-              const innerRuns = parseInlineRuns(cn);
+              const isBold = t === 'strong' || t === 'b';
+              const isItalic = t === 'em' || t === 'i';
+              const innerRuns = parseInlineRuns(cn, isBold, isItalic);
               innerRuns.forEach(r => runs.push(r));
             }
           }
