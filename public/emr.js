@@ -1981,6 +1981,24 @@ function buildReportContent(p) {
                 children: runs,
               }));
             }
+          } else if (tag === 'div') {
+            // Handle div elements - Trix might use these for content
+            const runs = parseInlineRuns(child);
+            if (runs.length) {
+              paragraphs.push(new Paragraph({
+                spacing: { after: 80 },
+                children: runs,
+              }));
+            }
+          } else if (tag === 'strong' || tag === 'b' || tag === 'em' || tag === 'i') {
+            // Handle standalone inline formatting tags by processing as inline runs
+            const runs = parseInlineRuns(child);
+            if (runs.length) {
+              paragraphs.push(new Paragraph({
+                spacing: { after: 80 },
+                children: runs,
+              }));
+            }
           } else {
             processNode(child);
           }
