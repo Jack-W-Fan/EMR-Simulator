@@ -1877,6 +1877,7 @@ function buildReportContent(p) {
       if (child.nodeType === 3) {
         const text = child.textContent;
         if (text) {
+          // Preserve the original text content including whitespace
           const opts = { text, size: 20, font };
           if (inheritBold) opts.bold = true;
           if (inheritItalic) opts.italics = true;
@@ -1887,7 +1888,7 @@ function buildReportContent(p) {
         const isBold = inheritBold || tag === 'strong' || tag === 'b';
         const isItalic = inheritItalic || tag === 'em' || tag === 'i';
         if (tag === 'br') {
-          runs.push(new TextRun({ text: '\n', size: 20, font }));
+          runs.push(new TextRun({ break: 1, size: 20, font }));
         } else {
           const innerRuns = parseInlineRuns(child, isBold, isItalic);
           innerRuns.forEach(r => runs.push(r));
@@ -1920,7 +1921,7 @@ function buildReportContent(p) {
         child.childNodes.forEach(cn => {
           if (cn.nodeType === 3) {
             const t = cn.textContent;
-            if (t && t.trim()) runs.push(new TextRun({ text: t.trim(), size: 20, font }));
+            if (t) runs.push(new TextRun({ text: t, size: 20, font }));
           } else if (cn.nodeType === 1) {
             const t = cn.tagName.toLowerCase();
             if (t !== 'ul' && t !== 'ol') {
