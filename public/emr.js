@@ -1925,13 +1925,7 @@ function buildReportContent(p) {
             const t = cn.tagName.toLowerCase();
             if (t !== 'ul' && t !== 'ol') {
               const innerRuns = parseInlineRuns(cn);
-              const isBold = t === 'strong' || t === 'b';
-              const isItalic = t === 'em' || t === 'i';
-              innerRuns.forEach(r => {
-                if (isBold) r.options.bold = true;
-                if (isItalic) r.options.italics = true;
-                runs.push(r);
-              });
+              innerRuns.forEach(r => runs.push(r));
             }
           }
         });
