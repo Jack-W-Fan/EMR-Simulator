@@ -1962,7 +1962,8 @@ function buildReportContent(p) {
           }
         } else if (child.nodeType === 1) {
           const tag = child.tagName.toLowerCase();
-          if (tag === 'p') {
+          if (tag === 'p' || tag === 'div') {
+            // Treat both p and div as paragraph breaks
             const runs = parseInlineRuns(child);
             if (runs.length) {
               paragraphs.push(new Paragraph({
@@ -1981,25 +1982,14 @@ function buildReportContent(p) {
                 children: runs,
               }));
             }
-          } else if (tag === 'div') {
-            // Handle div elements - Trix might use these for content
-            const runs = parseInlineRuns(child);
-            if (runs.length) {
-              paragraphs.push(new Paragraph({
-                spacing: { after: 80 },
-                children: runs,
-              }));
-            }
-          } else if (tag === 'strong' || tag === 'b' || tag === 'em' || tag === 'i') {
-            // Handle standalone inline formatting tags by processing as inline runs
-            const runs = parseInlineRuns(child);
-            if (runs.length) {
-              paragraphs.push(new Paragraph({
-                spacing: { after: 80 },
-                children: runs,
-              }));
-            }
+          } else if (tag === 'br') {
+            // Handle line breaks
+            paragraphs.push(new Paragraph({
+              spacing: { after: 80 },
+              children: [new TextRun({ text: '', size: 20, font })],
+            }));
           } else {
+            // Process other tags recursively without creating new paragraphs
             processNode(child);
           }
         }
