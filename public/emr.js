@@ -1888,7 +1888,8 @@ function buildReportContent(p) {
         const isBold = inheritBold || tag === 'strong' || tag === 'b';
         const isItalic = inheritItalic || tag === 'em' || tag === 'i';
         if (tag === 'br') {
-          runs.push(new TextRun({ break: 1, size: 20, font }));
+          // Don't add br as a text run, return a special marker
+          runs.push({ type: 'break' });
         } else {
           const innerRuns = parseInlineRuns(child, isBold, isItalic);
           innerRuns.forEach(r => runs.push(r));
@@ -1966,10 +1967,25 @@ function buildReportContent(p) {
           if (tag === 'p' || tag === 'div') {
             // Treat both p and div as paragraph breaks
             const runs = parseInlineRuns(child);
-            if (runs.length) {
+            // Process runs and handle breaks
+            let currentRuns = [];
+            runs.forEach(run => {
+              if (run.type === 'break') {
+                if (currentRuns.length) {
+                  paragraphs.push(new Paragraph({
+                    spacing: { after: 80 },
+                    children: currentRuns,
+                  }));
+                  currentRuns = [];
+                }
+              } else {
+                currentRuns.push(run);
+              }
+            });
+            if (currentRuns.length) {
               paragraphs.push(new Paragraph({
                 spacing: { after: 80 },
-                children: runs,
+                children: currentRuns,
               }));
             }
           } else if (tag === 'ul' || tag === 'ol') {
