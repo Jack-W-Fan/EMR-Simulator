@@ -1845,7 +1845,7 @@ function buildReportContent(p) {
 
   function addLabelLine(label) {
     paragraphs.push(new Paragraph({
-      spacing: { before: 200, after: 60 },
+      spacing: { before: 120, after: 80 },
       children: [new TextRun({ text: label + ':', bold: true, size: 22, font })],
     }));
   }
