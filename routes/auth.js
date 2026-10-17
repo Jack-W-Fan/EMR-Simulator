@@ -76,6 +76,8 @@ router.get('/me', (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
+  // Reset session timer on activity
+  req.session.touch();
   getDb();
   const user = dbGet('SELECT * FROM users WHERE id = ?', [req.session.userId]);
   res.json({

@@ -23,6 +23,11 @@ let patientAccessStatus = {};
 let passwordPromptPatientIndex = null;
 let setPasswordPatientIndex = null;
 
+// Session timeout handling
+let sessionTimeoutWarningShown = false;
+let sessionCheckInterval = null;
+let lastActivityTime = Date.now();
+
 const PROBLEM_CATEGORIES = {
   'Cardiovascular':   ['Hypertension','Coronary Artery Disease','Heart Failure','Atrial Fibrillation','Hyperlipidemia','Peripheral Artery Disease','Deep Vein Thrombosis','Pulmonary Embolism','Aortic Stenosis','Dilated Cardiomyopathy','Hypertrophic Cardiomyopathy','Venous Insufficiency','Varicose Veins','Endocarditis','Rheumatic Heart Disease','Myocardial Infarction','Ventricular Tachycardia','Congestive Heart Failure','Pulmonary Hypertension','Cardiomyopathy'],
   'Endocrine':        ['Type 2 Diabetes','Hypothyroidism','Obesity','Metabolic Syndrome','Type 1 Diabetes','Hyperthyroidism','Cushing\'s Syndrome','Addison\'s Disease','Hyperparathyroidism','Adrenal Insufficiency','Polycystic Ovary Syndrome','Diabetes Insipidus','Growth Hormone Deficiency','Hypoglycemia','Hypoparathyroidism'],
@@ -123,6 +128,60 @@ function calculateAge(dob) {
     age--;
   }
   return age >= 0 ? age : null;
+}
+
+// ── SESSION TIMEOUT HANDLING ──
+function startSessionMonitoring() {
+  stopSessionMonitoring(); // Clear any existing intervals
+
+  lastActivityTime = Date.now();
+
+  // Check session validity every 2 minutes
+  sessionCheckInterval = setInterval(() => {
+    checkSessionValidity();
+  }, 2 * 60 * 1000);
+}
+
+function stopSessionMonitoring() {
+  if (sessionCheckInterval) {
+    clearInterval(sessionCheckInterval);
+    sessionCheckInterval = null;
+  }
+  sessionTimeoutWarningShown = false;
+}
+
+async function checkSessionValidity() {
+  try {
+    await api('GET', '/api/auth/me');
+    // Session is still valid, update last activity time
+    lastActivityTime = Date.now();
+  } catch (error) {
+    // Session has expired
+    if (!sessionTimeoutWarningShown) {
+      sessionTimeoutWarningShown = true;
+      showSessionExpiredModal();
+    }
+  }
+}
+
+function showSessionExpiredModal() {
+  document.getElementById('sessionTimeoutModal').classList.add('open');
+}
+
+function relogin() {
+  // Close modal and redirect to login
+  document.getElementById('sessionTimeoutModal').classList.remove('open');
+  window.location.href = '/';
+}
+
+// Track user activity to refresh session on server
+function trackUserActivity() {
+  const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+  events.forEach(event => {
+    document.addEventListener(event, () => {
+      lastActivityTime = Date.now();
+    });
+  });
 }
 
 // ── GENERATE CASE MODAL ── (Coming Soon)
@@ -287,6 +346,8 @@ function scrollChat() {
     currentUser = data.user.displayName || data.user.email;
     currentUserEmail = data.user.email;
     currentUserRole = data.user.role || '';
+    startSessionMonitoring();
+    trackUserActivity();
     goSchedule();
   } catch (e) {
     console.error('Auth check failed:', e);
@@ -314,6 +375,7 @@ async function goSchedule() {
 
 async function doLogout() {
   try { await api('POST', '/api/auth/logout'); } catch {}
+  stopSessionMonitoring();
   currentUser = '';
   patients = [];
   currentPatient = null;
@@ -1669,6 +1731,15 @@ function editPhysicianNote(id) {
 
 async function savePhysicianNote() {
   if (!currentPatient) return;
+
+  // Check session validity first
+  try {
+    await api('GET', '/api/auth/me');
+  } catch (e) {
+    showSessionExpiredModal();
+    return;
+  }
+
   function getTrixHtml(id) {
     const t = window.trixEditors && window.trixEditors[id];
     return t ? t.hidden.value : '';

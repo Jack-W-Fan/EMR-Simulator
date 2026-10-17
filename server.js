@@ -43,7 +43,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     sameSite: 'lax',
     secure: false, // Set to true if using HTTPS
     path: '/', // Ensure cookie is available on all paths

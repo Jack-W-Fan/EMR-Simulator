@@ -270,6 +270,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="sessionTimeoutModal">
+  <div class="modal" style="width:450px;">
+    <h3><i class="ti ti-clock"></i> Session Expired</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Your session has expired due to inactivity.</p>
+    <p style="font-size:11px;color:#666;margin-bottom:16px;">Please log in again to continue. Your work has been saved automatically.</p>
+    <div class="modal-footer">
+      <button class="btn btn-green" onclick="relogin()">Log In Again</button>
+    </div>
+  </div>
+</div>
+
 <!-- Coming Soon: Interview Modal
 <div class="modal-overlay" id="interviewModal" style="width:100%;">
   <div class="modal" style="width:500px; max-height:80vh; padding:20px; display:flex; flex-direction:column;">
