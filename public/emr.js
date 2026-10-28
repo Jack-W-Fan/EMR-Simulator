@@ -28,6 +28,9 @@ let sessionTimeoutWarningShown = false;
 let sessionCheckInterval = null;
 let lastActivityTime = Date.now();
 
+// Auto-save draft handling
+let autoSaveInterval = null;
+
 const PROBLEM_CATEGORIES = {
   'Cardiovascular':   ['Hypertension','Coronary Artery Disease','Heart Failure','Atrial Fibrillation','Hyperlipidemia','Peripheral Artery Disease','Deep Vein Thrombosis','Pulmonary Embolism','Aortic Stenosis','Dilated Cardiomyopathy','Hypertrophic Cardiomyopathy','Venous Insufficiency','Varicose Veins','Endocarditis','Rheumatic Heart Disease','Myocardial Infarction','Ventricular Tachycardia','Congestive Heart Failure','Pulmonary Hypertension','Cardiomyopathy'],
   'Endocrine':        ['Type 2 Diabetes','Hypothyroidism','Obesity','Metabolic Syndrome','Type 1 Diabetes','Hyperthyroidism','Cushing\'s Syndrome','Addison\'s Disease','Hyperparathyroidism','Adrenal Insufficiency','Polycystic Ovary Syndrome','Diabetes Insipidus','Growth Hormone Deficiency','Hypoglycemia','Hypoparathyroidism'],
@@ -169,6 +172,10 @@ function showSessionExpiredModal() {
 }
 
 function relogin() {
+  // Save draft before redirecting
+  if (noteFormOpen && currentPatient) {
+    saveNoteDraft();
+  }
   // Close modal and redirect to login
   document.getElementById('sessionTimeoutModal').classList.remove('open');
   window.location.href = '/';
@@ -182,6 +189,149 @@ function trackUserActivity() {
       lastActivityTime = Date.now();
     });
   });
+}
+
+// ── AUTO-SAVE DRAFTS ──
+function startAutoSave() {
+  stopAutoSave(); // Clear any existing intervals
+  autoSaveInterval = setInterval(() => {
+    if (noteFormOpen && currentPatient) {
+      saveNoteDraft();
+    }
+  }, 30 * 1000); // Save every 30 seconds
+}
+
+function stopAutoSave() {
+  if (autoSaveInterval) {
+    clearInterval(autoSaveInterval);
+    autoSaveInterval = null;
+  }
+}
+
+function saveNoteDraft() {
+  if (!currentPatient) return;
+
+  function getTrixHtml(id) {
+    const t = window.trixEditors && window.trixEditors[id];
+    return t ? t.hidden.value : '';
+  }
+
+  const draftData = {
+    patientMr: currentPatient.mr,
+    chief_complaint: getTrixHtml('noteChiefComplaint'),
+    history_present_illness: getTrixHtml('noteHPI'),
+    past_medical_history: getTrixHtml('notePMH'),
+    phq2_screening: getTrixHtml('notePHQ2'),
+    surgical_history: getTrixHtml('noteSurgical'),
+    hospitalizations: getTrixHtml('noteHospitalizations'),
+    gynecological_obstetric_history: currentPatient.sex === 'F' ? getTrixHtml('noteGynObs') : '',
+    health_maintenance: getTrixHtml('noteHealth'),
+    advanced_directive: getTrixHtml('noteAdvDirective'),
+    family_history: getTrixHtml('noteFamily'),
+    social_history: getTrixHtml('noteSocial'),
+    review_of_systems: getTrixHtml('noteROS'),
+    physical_exam: getTrixHtml('notePhysical'),
+    assessment: getTrixHtml('noteAssessment'),
+    differential_diagnosis: getTrixHtml('noteDiffDx'),
+    plan: getTrixHtml('notePlan'),
+    timestamp: Date.now()
+  };
+
+  localStorage.setItem('emr_note_draft', JSON.stringify(draftData));
+  console.log('Draft auto-saved at', new Date().toLocaleTimeString());
+}
+
+function loadNoteDraft() {
+  const draftStr = localStorage.getItem('emr_note_draft');
+  if (!draftStr) return null;
+
+  const draft = JSON.parse(draftStr);
+
+  // Only load draft if it's for the current patient and less than 24 hours old
+  if (draft.patientMr !== currentPatient.mr) {
+    localStorage.removeItem('emr_note_draft');
+    return null;
+  }
+
+  const ageHours = (Date.now() - draft.timestamp) / (1000 * 60 * 60);
+  if (ageHours > 24) {
+    localStorage.removeItem('emr_note_draft');
+    return null;
+  }
+
+  return draft;
+}
+
+function clearNoteDraft() {
+  localStorage.removeItem('emr_note_draft');
+}
+
+function restoreNoteDraft(draft) {
+  if (!draft) return;
+
+  console.log('Attempting to restore draft for patient:', draft.patientMr);
+  console.log('Draft data:', draft);
+
+  // Wait for Trix editors to be initialized
+  const checkEditors = setInterval(() => {
+    console.log('Checking for Trix editors...');
+    console.log('window.trixEditors:', window.trixEditors);
+    console.log('Keys:', window.trixEditors ? Object.keys(window.trixEditors) : 'none');
+
+    if (!window.trixEditors || Object.keys(window.trixEditors).length === 0) {
+      return; // Editors not ready yet
+    }
+
+    clearInterval(checkEditors);
+
+    function setTrixHtml(id, value) {
+      console.log(`Setting ${id} to:`, value ? (value.substring(0, 50) + '...') : 'empty');
+      const t = window.trixEditors && window.trixEditors[id];
+      if (t && t.editor) {
+        // Access the Trix editor instance
+        const editor = t.editor.editor;
+        if (editor) {
+          // Clear the editor
+          editor.setSelectedRange([0, editor.getDocument().getLength()]);
+          editor.deleteInDirection('backward');
+          // Insert the HTML
+          editor.insertHTML(value);
+          console.log(`Successfully set ${id} using editor API`);
+        } else {
+          console.error(`Editor instance not found for ${id}`);
+        }
+      } else {
+        console.error(`Failed to find editor for ${id}`, t);
+      }
+    }
+
+    setTrixHtml('noteChiefComplaint', draft.chief_complaint);
+    setTrixHtml('noteHPI', draft.history_present_illness);
+    setTrixHtml('notePMH', draft.past_medical_history);
+    setTrixHtml('notePHQ2', draft.phq2_screening);
+    setTrixHtml('noteSurgical', draft.surgical_history);
+    setTrixHtml('noteHospitalizations', draft.hospitalizations);
+    if (currentPatient.sex === 'F') {
+      setTrixHtml('noteGynObs', draft.gynecological_obstetric_history);
+    }
+    setTrixHtml('noteHealth', draft.health_maintenance);
+    setTrixHtml('noteAdvDirective', draft.advanced_directive);
+    setTrixHtml('noteFamily', draft.family_history);
+    setTrixHtml('noteSocial', draft.social_history);
+    setTrixHtml('noteROS', draft.review_of_systems);
+    setTrixHtml('notePhysical', draft.physical_exam);
+    setTrixHtml('noteAssessment', draft.assessment);
+    setTrixHtml('noteDiffDx', draft.differential_diagnosis);
+    setTrixHtml('notePlan', draft.plan);
+
+    console.log('Draft restoration complete');
+  }, 100);
+
+  // Timeout after 5 seconds to prevent infinite loop
+  setTimeout(() => {
+    clearInterval(checkEditors);
+    console.log('Draft restoration timed out');
+  }, 5000);
 }
 
 // ── GENERATE CASE MODAL ── (Coming Soon)
@@ -348,6 +498,7 @@ function scrollChat() {
     currentUserRole = data.user.role || '';
     startSessionMonitoring();
     trackUserActivity();
+    startAutoSave();
     goSchedule();
   } catch (e) {
     console.error('Auth check failed:', e);
@@ -376,6 +527,7 @@ async function goSchedule() {
 async function doLogout() {
   try { await api('POST', '/api/auth/logout'); } catch {}
   stopSessionMonitoring();
+  stopAutoSave();
   currentUser = '';
   patients = [];
   currentPatient = null;
@@ -757,6 +909,16 @@ async function loadPatientData(mr) {
     currentNursingNotes = data.nursingNotes || [];
     currentImaging = data.imaging || [];
     currentAllergies = data.allergies || [];
+
+    // Clear draft when switching patients (unless it's for this patient)
+    const draftStr = localStorage.getItem('emr_note_draft');
+    if (draftStr) {
+      const draft = JSON.parse(draftStr);
+      if (draft.patientMr !== mr) {
+        clearNoteDraft();
+      }
+    }
+
     return data;
   } catch {
     currentMeds = [];
@@ -1710,13 +1872,31 @@ function toggleNoteForm() {
   noteFormOpen = !noteFormOpen;
   editingNoteId = null;
   noteFormData = {};
+
+  // Render the form first
   renderSection('note');
+
+  if (noteFormOpen) {
+    // Check for draft and restore it after form is rendered
+    const draft = loadNoteDraft();
+    if (draft) {
+      // Wait a bit for Trix editors to initialize after render
+      setTimeout(() => {
+        restoreNoteDraft(draft);
+        // Show alert after restoration
+        setTimeout(() => {
+          alert('A draft note has been restored from auto-save.');
+        }, 500);
+      }, 300);
+    }
+  }
 }
 
 function cancelNoteForm() {
   noteFormOpen = false;
   editingNoteId = null;
   noteFormData = {};
+  clearNoteDraft();
   renderSection('note');
 }
 
@@ -1785,6 +1965,7 @@ async function savePhysicianNote() {
     });
     noteFormOpen = false;
     noteFormData = {};
+    clearNoteDraft();
     await loadPatientData(currentPatient.mr);
     renderSection('note');
   } catch (e) {
