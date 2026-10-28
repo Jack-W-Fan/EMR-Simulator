@@ -195,7 +195,7 @@ function trackUserActivity() {
 function startAutoSave() {
   stopAutoSave(); // Clear any existing intervals
   autoSaveInterval = setInterval(() => {
-    if (noteFormOpen && currentPatient) {
+    if ((noteFormOpen || editingNoteId) && currentPatient) {
       saveNoteDraft();
     }
   }, 30 * 1000); // Save every 30 seconds
@@ -1907,6 +1907,15 @@ function editPhysicianNote(id) {
   noteFormOpen = false;
   noteFormData = {};
   renderSection('note');
+
+  // Check for draft and restore it
+  const draft = loadNoteDraft();
+  if (draft) {
+    setTimeout(() => {
+      restoreNoteDraft(draft);
+      alert('A draft note has been restored from auto-save.');
+    }, 300);
+  }
 }
 
 async function savePhysicianNote() {
