@@ -208,7 +208,7 @@ function stopAutoSave() {
   }
 }
 
-function saveNoteDraft() {
+function saveNoteDraft(manualSave = false) {
   if (!currentPatient) return;
 
   function getTrixHtml(id) {
@@ -234,36 +234,121 @@ function saveNoteDraft() {
     assessment: getTrixHtml('noteAssessment'),
     differential_diagnosis: getTrixHtml('noteDiffDx'),
     plan: getTrixHtml('notePlan'),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    manualSave: manualSave
   };
 
-  localStorage.setItem('emr_note_draft', JSON.stringify(draftData));
-  console.log('Draft auto-saved at', new Date().toLocaleTimeString());
+  // Check if draft has any content (strip HTML tags to check actual text)
+  // Exclude metadata fields (patientMr, timestamp, manualSave) from content check
+  const contentFields = ['chief_complaint', 'history_present_illness', 'past_medical_history', 'phq2_screening', 'surgical_history', 'hospitalizations', 'gynecological_obstetric_history', 'health_maintenance', 'advanced_directive', 'family_history', 'social_history', 'review_of_systems', 'physical_exam', 'assessment', 'differential_diagnosis', 'plan'];
+  const hasContent = contentFields.some(field => {
+    const value = draftData[field];
+    if (typeof value !== 'string') return false;
+    const text = value.replace(/<[^>]*>/g, '').trim();
+    return text.length > 0;
+  });
+
+  // Don't save if completely blank (unless it's a manual save)
+  if (!hasContent && !manualSave) {
+    console.log('Draft is blank, skipping save');
+    return;
+  }
+
+  // Get existing history
+  let history = [];
+  const historyStr = localStorage.getItem('emr_note_draft_history');
+  if (historyStr) {
+    history = JSON.parse(historyStr);
+  }
+
+  // If manual save, clear previous history and start fresh
+  if (manualSave) {
+    history = [];
+  }
+
+  // Add new draft to history
+  history.unshift(draftData);
+
+  // Keep only the last 10 versions
+  if (history.length > 10) {
+    history = history.slice(0, 10);
+  }
+
+  // Clean up old drafts (older than 7 days)
+  const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  history = history.filter(draft => draft.timestamp > sevenDaysAgo);
+
+  // Save history
+  localStorage.setItem('emr_note_draft_history', JSON.stringify(history));
+  console.log('Draft', manualSave ? 'manually saved' : 'auto-saved', 'at', new Date().toLocaleTimeString(), '(History:', history.length, 'versions)');
 }
 
 function loadNoteDraft() {
-  const draftStr = localStorage.getItem('emr_note_draft');
-  if (!draftStr) return null;
+  const historyStr = localStorage.getItem('emr_note_draft_history');
+  if (!historyStr) return null;
 
-  const draft = JSON.parse(draftStr);
+  const history = JSON.parse(historyStr);
 
-  // Only load draft if it's for the current patient and less than 24 hours old
-  if (draft.patientMr !== currentPatient.mr) {
-    localStorage.removeItem('emr_note_draft');
-    return null;
-  }
+  // Find the most recent draft for the current patient
+  const draft = history.find(d => d.patientMr === currentPatient.mr);
 
-  const ageHours = (Date.now() - draft.timestamp) / (1000 * 60 * 60);
-  if (ageHours > 24) {
-    localStorage.removeItem('emr_note_draft');
-    return null;
-  }
+  if (!draft) return null;
 
   return draft;
 }
 
+function getDraftHistory() {
+  const historyStr = localStorage.getItem('emr_note_draft_history');
+  if (!historyStr) return [];
+
+  const history = JSON.parse(historyStr);
+
+  // Return only drafts for current patient
+  return history.filter(d => d.patientMr === currentPatient.mr);
+}
+
+function restoreDraftVersion(index) {
+  const history = getDraftHistory();
+  if (!history[index]) return;
+
+  const draft = history[index];
+  restoreNoteDraft(draft);
+  toggleDraftHistory(); // Close dropdown
+  alert('Draft from ' + new Date(draft.timestamp).toLocaleString() + ' has been restored.');
+}
+
+function toggleDraftHistory() {
+  const dropdown = document.getElementById('draftHistoryDropdown');
+  if (!dropdown) return;
+
+  if (dropdown.style.display === 'none') {
+    // Populate history
+    const history = getDraftHistory();
+    const list = document.getElementById('draftHistoryList');
+
+    if (history.length === 0) {
+      list.innerHTML = '<div style="font-size:11px;color:var(--text-muted);">No draft history</div>';
+    } else {
+      list.innerHTML = history.map((draft, index) => {
+        const time = new Date(draft.timestamp).toLocaleString();
+        const preview = draft.chief_complaint ? draft.chief_complaint.replace(/<[^>]*>/g, '').substring(0, 30) + '...' : 'Empty';
+        return `
+          <div style="padding:6px 8px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="restoreDraftVersion(${index})">
+            <div style="font-size:11px;font-weight:600;">${time}</div>
+            <div style="font-size:10px;color:var(--text-muted);">${preview}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    dropdown.style.display = 'block';
+  } else {
+    dropdown.style.display = 'none';
+  }
+}
+
 function clearNoteDraft() {
-  localStorage.removeItem('emr_note_draft');
+  localStorage.removeItem('emr_note_draft_history');
 }
 
 function restoreNoteDraft(draft) {
@@ -1688,7 +1773,19 @@ function renderSection(sec) {
 
     const formHtml = `
       <div id="noteFormContainer" style="margin-bottom:16px;padding:12px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:4px;">
-        <div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--blue-mid);">${editingNoteId ? 'Edit Note' : 'Add New Note'}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="font-weight:600;font-size:13px;color:var(--blue-mid);">${editingNoteId ? 'Edit Note' : 'Add New Note'}</div>
+            <div style="position:relative;">
+              <button class="btn btn-outline" onclick="toggleDraftHistory()" style="padding:4px 12px;font-size:12px;"><i class="ti ti-history"></i> History</button>
+              <div id="draftHistoryDropdown" style="display:none;position:absolute;top:100%;left:0;background:white;border:1px solid var(--border);border-radius:4px;padding:8px;min-width:200px;max-height:300px;overflow-y:auto;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Recent drafts:</div>
+                <div id="draftHistoryList"></div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-green" onclick="${editingNoteId ? 'saveNoteEdit()' : 'savePhysicianNote()'}" style="padding:4px 12px;font-size:12px;"><i class="ti ti-device-floppy"></i> Save</button>
+        </div>
         ${noteFields.map((id, i) => `
           <div class="field" style="margin-bottom:12px;"><label>${fieldLabels[i]}</label><input type="hidden" id="trix_${id}" value=""><trix-editor input="trix_${id}" style="min-height:80px;border:1px solid var(--border);border-radius:4px;"></trix-editor></div>
         `).join('')}
@@ -1974,7 +2071,7 @@ async function savePhysicianNote() {
     });
     noteFormOpen = false;
     noteFormData = {};
-    clearNoteDraft();
+    saveNoteDraft(true); // Manual save - clears history
     await loadPatientData(currentPatient.mr);
     renderSection('note');
   } catch (e) {
@@ -2029,6 +2126,7 @@ async function saveNoteEdit() {
     });
     editingNoteId = null;
     noteFormData = {};
+    saveNoteDraft(true); // Manual save - clears history
     await loadPatientData(currentPatient.mr);
     renderSection('note');
   } catch (e) {
